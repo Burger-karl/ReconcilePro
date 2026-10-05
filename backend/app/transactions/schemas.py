@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from app.allocations.schemas import AllocationRead
+
 AllocationState = Literal["unallocated", "part", "allocated"]
 
 
@@ -20,19 +22,6 @@ class TransactionRead(BaseModel):
     balance_kobo: int | None
     payer_name: str | None
     created_at: datetime
-
-
-class AllocationRead(BaseModel):
-    """One line of a bank credit's allocation history, reversed ones included."""
-
-    id: uuid.UUID
-    invoice_id: uuid.UUID
-    invoice_number: str
-    amount_kobo: int
-    method: str
-    created_at: datetime
-    reversed_at: datetime | None
-    reversal_reason: str | None
 
 
 class TransactionDetail(TransactionRead):

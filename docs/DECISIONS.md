@@ -169,3 +169,37 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 - **Why:** development could not wait for real statements. Each real bank becomes one small parser module listed
   in `parsers/detect.py`, plus a redacted fixture; nothing else changes. Real exports also belong in docs/research/
   as evidence for the research gate.
+
+## D-25 — Matching score details
+- **Decision:** amount equal to outstanding = 50. Name: rapidfuzz `token_set_ratio` on normalised names (upper case,
+  "&" → AND, punctuation and LTD/LIMITED/PLC removed), best of customer name and aliases; below 85% → 0, otherwise
+  `round(30 × similarity / 100)` (85% → 26, 100% → 30). Date: `round(20 × (14 − days) / 14)` for 0–13 days after the
+  invoice was sent (Lagos date), else 0. Suggested when the top score ≥ 70 **and** it leads the runner-up by ≥ 10.
+- **Why:** these are the CLAUDE.md weights made precise. The 10-point margin is "one clear top candidate": two
+  identical invoices for the same customer both score 100, and guessing between them would be wrong half the time.
+- **Rejected:** machine-learned weights — no training data, and impossible to explain line by line.
+
+## D-26 — Reference matching ignores case, spaces AND punctuation
+- **Decision:** both the invoice reference and the payment text are reduced to letters and digits before comparing
+  (`"rcn - vyq esr"` → `RCNVYQESR`). Exactly one open invoice quoted + amount ≤ outstanding → auto-allocate the whole credit.
+  More than one invoice quoted, or too much money → the queue.
+- **Why:** customers type references by hand into banking apps; dashes and spaces get dropped or added. The `RCN` prefix
+  and 6 random characters (D-12) keep accidental matches inside joined-up text very unlikely.
+
+## D-27 — Auto-matching runs inside the statement import's transaction
+- **Decision:** after inserting new credits, the import calls `reconciliation.auto_match()` for just those lines, then
+  commits once. `POST /api/reconciliation/auto-match` re-runs it over every unallocated credit.
+- **Why:** an import either lands with its automatic allocations or not at all. The re-run covers money that arrived
+  quoting a reference before its invoice was sent (drafts are never candidates). The system is the actor
+  (`created_by` = null, method `auto`), so the audit trail shows a person didn't do it.
+
+## D-28 — "Not this one" is stored as an audit event
+- **Decision:** rejecting a candidate writes a `match.rejected` audit event with the transaction and invoice ids; the
+  queue and auto-match skip those pairs.
+- **Why:** the rejection must be audited anyway (invariant 7), and the event already holds both ids, so a separate
+  table would store the same fact twice. Volumes are tiny (a few rejections per month per SME).
+- **Revisit if:** rejections need to be undone; then a proper `match_rejections` table with a `revoked_at` is cleaner.
+
+## D-29 — Match reasons contain no money amounts
+- **Decision:** reasons say "Amount equals the amount outstanding", not "… ₦90,000.00".
+- **Why:** invariant 1 says naira formatting happens only in the UI. The UI already shows both amounts next to the reasons.

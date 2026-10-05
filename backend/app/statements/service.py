@@ -18,6 +18,7 @@ from sqlmodel import Session
 from app.audit.service import record
 from app.auth.models import User
 from app.core.time import utc_now
+from app.reconciliation.service import auto_match
 from app.statements.parsers.base import NormalizedLine, StatementError
 from app.statements.parsers.detect import detect_and_parse
 from app.statements.schemas import ImportResult
@@ -135,6 +136,9 @@ def import_statement(session: Session, user: User, filename: str, content: bytes
         added_ids = set(session.exec(statement).scalars())
 
     settlements_added = sum(1 for row in rows if row["id"] in added_ids and row["kind"] == "settlement")
+    # Match the NEW credits straight away, in this same transaction (feature 5). Settlements are skipped
+    # by auto_match itself (invariant 6). Old lines that were skipped as duplicates are not re-matched here.
+    auto_allocated, needs_review = auto_match(session, user.workspace_id, list(added_ids)) if added_ids else (0, 0)
     result = ImportResult(
         bank=parser.NAME,
         rows_read=len(lines),
@@ -142,6 +146,8 @@ def import_statement(session: Session, user: User, filename: str, content: bytes
         skipped_duplicates=len(credits) - len(added_ids),
         settlements=settlements_added,
         debits_ignored=len(lines) - len(credits),
+        auto_allocated=auto_allocated,
+        needs_review=needs_review,
     )
     record(
         session,

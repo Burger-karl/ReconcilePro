@@ -21,7 +21,7 @@ class TransactionNotFound(Exception):
     pass
 
 
-def _to_read(transaction: Transaction, allocated_kobo: int) -> TransactionRead:
+def to_read(transaction: Transaction, allocated_kobo: int) -> TransactionRead:
     return TransactionRead(
         id=transaction.id,
         source=transaction.source,
@@ -74,7 +74,7 @@ def list_transactions(
 
     transactions = session.exec(query).all()
     allocated = allocated_totals(session, user.workspace_id, [t.id for t in transactions])
-    reads = [_to_read(t, allocated.get(t.id, 0)) for t in transactions]
+    reads = [to_read(t, allocated.get(t.id, 0)) for t in transactions]
     # Like invoice status (docs/DECISIONS.md D-15), allocation state is derived, so it is filtered in Python.
     if state is not None:
         reads = [read for read in reads if _state(read) == state]
@@ -95,7 +95,7 @@ def get_transaction(session: Session, user: User, transaction_id: uuid.UUID) -> 
     ).all()
     allocated = allocated_totals(session, user.workspace_id, [transaction.id]).get(transaction.id, 0)
     return TransactionDetail(
-        **_to_read(transaction, allocated).model_dump(),
+        **to_read(transaction, allocated).model_dump(),
         allocations=[
             AllocationRead(
                 id=allocation.id,

@@ -44,6 +44,8 @@ def test_import_bank_a(client: TestClient, auth_headers: dict, session: Session)
         "skipped_duplicates": 0,
         "settlements": 1,
         "debits_ignored": 2,
+        "auto_allocated": 0,  # no invoices exist yet
+        "needs_review": 3,  # the 3 ordinary credits; the settlement is never queued
     }
     rows = session.exec(select(Transaction).order_by(Transaction.value_date, Transaction.amount_kobo)).all()
     assert [(r.amount_kobo, r.kind) for r in rows] == [

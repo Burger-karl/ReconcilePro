@@ -48,7 +48,7 @@ Conventions:
 ## statements — `app/statements/router.py`
 | Method | Path | Body | Returns | Notes |
 |--------|------|------|---------|-------|
-| POST | `/api/statements/import` | multipart `file` (CSV, ≤ 5 MB) | `{bank, rows_read, added, skipped_duplicates, settlements, debits_ignored}` | detect parser → normalise → fingerprint → `INSERT … ON CONFLICT DO NOTHING` (invariant 2). 400 with the line number if any row is bad (nothing imported), 413 if too large. Auto-matching of new credits is added in feature 5 |
+| POST | `/api/statements/import` | multipart `file` (CSV, ≤ 5 MB) | `{bank, rows_read, added, skipped_duplicates, settlements, debits_ignored, auto_allocated, needs_review}` | detect parser → normalise → fingerprint → `INSERT … ON CONFLICT DO NOTHING` (invariant 2). 400 with the line number if any row is bad (nothing imported), 413 if too large. New credits are auto-matched in the same transaction (D-27) |
 
 ## transactions — `app/transactions/router.py`
 | Method | Path | Query | Returns |
@@ -59,10 +59,15 @@ Conventions:
 ## reconciliation — `app/reconciliation/router.py`
 | Method | Path | Body | Returns | Notes |
 |--------|------|------|---------|-------|
-| GET | `/api/reconciliation/queue` | — | credits with `unallocated_kobo > 0` and `kind = credit`, each with ranked `candidates[]` (`invoice, score, breakdown{amount,name,date}, reasons[]`) | settlements never appear (invariant 6) |
-| POST | `/api/reconciliation/allocate` | `transaction_id, invoice_id, amount_kobo, method` | allocation | calls `allocations.service.allocate()`; 409 if either side would be over-allocated |
-| POST | `/api/reconciliation/reject` | `transaction_id, invoice_id` | 204 | records "not this one" in audit so the suggestion is not shown again |
-| POST | `/api/allocations/{id}/reverse` | `reason` | allocation | sets `reversed_at`, writes audit event; never deletes (invariant 7) |
+| GET | `/api/reconciliation/queue` | — | `{items, total}`; each item: `transaction` (with `unallocated_kobo`), `suggested_invoice_id`, `candidates[]` (`invoice_id, invoice_number, customer_name, status, outstanding_kobo, score, breakdown{amount,name,date}, reference_match, reasons[]`, best first, max 3) | credits with money left; settlements never appear (invariant 6); rejected pairs left out |
+| POST | `/api/reconciliation/allocate` | `transaction_id, invoice_id, amount_kobo, method: suggested\|manual` | 201 allocation | calls `allocations.service.allocate()`; 409 if either side would be over-allocated, 404 if not in this workspace |
+| POST | `/api/reconciliation/reject` | `transaction_id, invoice_id` | 204 | audit event `match.rejected`; that pair is not proposed again (D-28) |
+| POST | `/api/reconciliation/auto-match` | — | `{auto_allocated}` | re-runs exact-reference matching over all unallocated credits (D-27) |
+
+## allocations — `app/allocations/router.py`
+| Method | Path | Body | Returns | Notes |
+|--------|------|------|---------|-------|
+| POST | `/api/allocations/{id}/reverse` | `reason` (required) | allocation | sets `reversed_at`, writes audit event; never deletes (invariant 7); 409 if already reversed |
 
 ## dashboard — `app/dashboard/router.py`
 | Method | Path | Returns |

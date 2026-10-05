@@ -15,6 +15,9 @@ email-validator==2.3.0
 pyjwt==2.15.1
 pwdlib[argon2]==0.3.1
 
+# Matching: fuzzy comparison of payer names with customer names
+rapidfuzz==3.14.6
+
 # Tests
 pytest==9.1.1
 httpx==0.28.1

@@ -19,7 +19,8 @@ This is the signature screen: the accountant clears exceptions here, fast, witho
   Amount (max 50), Name (max 30), Date (max 20). Filled part solid navy, unfilled part `muted`.
   The total score is shown as a number next to it. Each segment has a text label; colour is not the only signal.
 - **Reasons** as a short list in plain English, exactly as the API returns them
-  (e.g. "Amount equals outstanding ₦90,000.00", "Payer 'KOLA AND SONS' ~ customer 'Kola & Sons' (92%)").
+  (e.g. "Amount equals the amount outstanding", "Payer 'KOLA AND SONS' matches customer 'Kola & Sons' (100%)").
+  Reasons never contain money (D-29); show the credit amount and the outstanding amount beside them.
 - Actions: **Accept** (primary), **Allocate part…** (outline, opens dialog with amount input in ₦, converted to kobo),
   **Not this one** (ghost).
 

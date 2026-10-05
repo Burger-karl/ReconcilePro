@@ -22,6 +22,7 @@ from sqlalchemy import BigInteger, cast, func
 from sqlmodel import Session, select
 
 from app.allocations.models import PaymentAllocation
+from app.allocations.schemas import AllocationRead
 from app.audit.service import record
 from app.core.time import utc_now
 from app.invoices.models import Invoice
@@ -242,3 +243,23 @@ def reverse(
     )
     session.flush()
     return allocation
+
+
+# --- reading ------------------------------------------------------------------------------------------------
+
+
+def to_read(session: Session, allocation: PaymentAllocation) -> AllocationRead:
+    """API shape of one allocation, with its invoice number for display."""
+    number = session.exec(
+        select(Invoice.number).where(Invoice.id == allocation.invoice_id, Invoice.workspace_id == allocation.workspace_id)
+    ).one()
+    return AllocationRead(
+        id=allocation.id,
+        invoice_id=allocation.invoice_id,
+        invoice_number=number,
+        amount_kobo=allocation.amount_kobo,
+        method=allocation.method,
+        created_at=allocation.created_at,
+        reversed_at=allocation.reversed_at,
+        reversal_reason=allocation.reversal_reason,
+    )
