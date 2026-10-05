@@ -1,0 +1,58 @@
+# Local dev: `docker compose up` starts Postgres, the API (localhost:8000) and the web app (localhost:3000).
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: reconcile
+      POSTGRES_PASSWORD: reconcile
+      POSTGRES_DB: reconcile
+    ports:
+      # Host port 5433: a Postgres installed on Windows already uses 5432.
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reconcile"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    # Secrets (Paystack, Resend, JWT) come from backend/.env if it exists.
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      # Inside the compose network the database host is "db", not localhost.
+      DATABASE_URL: postgresql+psycopg://reconcile:reconcile@db:5432/reconcile
+      TEST_DATABASE_URL: postgresql+psycopg://reconcile:reconcile@db:5432/reconcile_test
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - /app/.venv # keep the host's Windows venv out of the Linux container
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: node:24-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      WATCHPACK_POLLING: "true" # file watching through a Windows bind mount needs polling
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # Linux node_modules stay in the container
+      - /app/.next
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

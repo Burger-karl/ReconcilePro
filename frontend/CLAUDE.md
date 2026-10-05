@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # Frontend notes
 
 - Next.js App Router. Route groups: (marketing) landing page, (auth) login/register, (app) signed-in screens.
