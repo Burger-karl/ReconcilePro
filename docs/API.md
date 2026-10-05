@@ -48,13 +48,13 @@ Conventions:
 ## statements — `app/statements/router.py`
 | Method | Path | Body | Returns | Notes |
 |--------|------|------|---------|-------|
-| POST | `/api/statements/import` | multipart `file` (CSV/XLSX) | `{bank, rows_read, added, skipped_duplicates, settlements, auto_allocated, needs_review}` | detect parser → normalise → fingerprint → `INSERT … ON CONFLICT DO NOTHING` (invariant 2) → run matching on new credits |
+| POST | `/api/statements/import` | multipart `file` (CSV, ≤ 5 MB) | `{bank, rows_read, added, skipped_duplicates, settlements, debits_ignored}` | detect parser → normalise → fingerprint → `INSERT … ON CONFLICT DO NOTHING` (invariant 2). 400 with the line number if any row is bad (nothing imported), 413 if too large. Auto-matching of new credits is added in feature 5 |
 
 ## transactions — `app/transactions/router.py`
 | Method | Path | Query | Returns |
 |--------|------|-------|---------|
-| GET | `/api/transactions` | `?source=&kind=&state=unallocated\|part\|allocated&from=&to=` | list with `unallocated_kobo` |
-| GET | `/api/transactions/{id}` | — | transaction + allocations |
+| GET | `/api/transactions` | `?source=&kind=&state=unallocated\|part\|allocated&from=&to=` | list with `allocated_kobo`, `unallocated_kobo`, newest value date first |
+| GET | `/api/transactions/{id}` | — | transaction + allocation history (reversed ones included) |
 
 ## reconciliation — `app/reconciliation/router.py`
 | Method | Path | Body | Returns | Notes |

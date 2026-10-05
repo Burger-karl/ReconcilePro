@@ -7,6 +7,8 @@ psycopg[binary]==3.3.6
 alembic==1.20.0
 pydantic-settings==2.15.0
 pydantic==2.13.5
+# Needed by FastAPI to receive file uploads (statement import)
+python-multipart==0.0.32
 email-validator==2.3.0
 
 # Auth: JWT login tokens, argon2 password hashing

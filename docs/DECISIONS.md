@@ -137,3 +137,35 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 - **Decision:** `CAST(COALESCE(SUM(amount_kobo), 0) AS BIGINT)` in `allocations.service`.
 - **Why:** PostgreSQL returns SUM of a BIGINT as NUMERIC, which psycopg turns into a Python Decimal. Casting keeps every
   amount a plain int end to end (invariant 1).
+
+## D-20 — Statement import: CSV only, credits only, all-or-nothing
+- **Decision:** the import accepts CSV (UTF-8 or Excel's cp1252). Only credits (money in) are stored; debits are counted
+  and reported as `debits_ignored`. If any row can't be parsed, the whole file is rejected with the line number, and
+  nothing is inserted.
+- **Why:** reconciliation matches money IN to invoices; storing debits adds rows nothing uses yet. Rejecting the whole
+  file means a half-imported statement can never exist, so "re-import adds nothing" stays easy to reason about.
+- **Revisit:** XLSX support once real bank exports (docs/research/) show which banks only offer Excel.
+
+## D-21 — Duplicates are stopped by the database, not by checking first
+- **Decision:** one `INSERT ... ON CONFLICT ON CONSTRAINT uq_transactions_workspace_fingerprint DO NOTHING RETURNING id`
+  for the whole file. Lines returned were added; the rest were duplicates.
+- **Why:** "SELECT to see if it exists, then INSERT" has a gap in which two imports of the same file can both insert.
+  The unique constraint closes that gap, and it is one statement instead of one query per line.
+
+## D-22 — Settlement lines are recognised by "PAYSTACK" in the narration
+- **Decision:** a credit whose narration contains PAYSTACK (any case) is stored with `kind = settlement` (invariant 6).
+- **Why:** these are Paystack paying out money whose individual customer payments the webhook already recorded;
+  matching them to invoices would count that money twice.
+- **Revisit:** check the exact settlement narration in real exports (docs/research/); if a bank abbreviates it, extend
+  `is_settlement()` and add a fixture.
+
+## D-23 — Rows with more cells than the header are rejected
+- **Decision:** a data row with extra non-empty cells is an error, not truncated.
+- **Why:** an unquoted `25,000.00` splits into `25` and `000.00`; silently reading ₦25 would lose ₦24,975.
+  A test in `test_statement_parsers.py` covers it.
+
+## D-24 — Parsers are built on synthetic fixtures until real exports arrive
+- **Decision:** `bank_a` and `bank_b` are invented formats (`backend/tests/fixtures/statements/`, marked synthetic).
+- **Why:** development could not wait for real statements. Each real bank becomes one small parser module listed
+  in `parsers/detect.py`, plus a redacted fixture; nothing else changes. Real exports also belong in docs/research/
+  as evidence for the research gate.

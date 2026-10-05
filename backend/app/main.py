@@ -6,6 +6,8 @@ Each feature folder exposes a `router`; include it here as features are built, e
 app.include_router(customers_router)
 app.include_router(invoices_router)
 app.include_router(public_invoices_router)
+app.include_router(statements_router)
+app.include_router(transactions_router)
 """
 
 from fastapi import FastAPI
@@ -16,6 +18,8 @@ from app.core.config import settings
 from app.customers.router import router as customers_router
 from app.invoices.public_router import router as public_invoices_router
 from app.invoices.router import router as invoices_router
+from app.statements.router import router as statements_router
+from app.transactions.router import router as transactions_router
 
 app = FastAPI(title="Reconcile API", version="0.1.0")
 
@@ -33,6 +37,8 @@ app.include_router(auth_router)
 app.include_router(customers_router)
 app.include_router(invoices_router)
 app.include_router(public_invoices_router)
+app.include_router(statements_router)
+app.include_router(transactions_router)
 
 
 @app.get("/api/health")

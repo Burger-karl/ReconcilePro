@@ -438,3 +438,27 @@ def test_totals_ignore_other_workspaces(session: Session, owner: User) -> None:
 
     assert invoices.paid_totals(session, other.workspace_id, [invoice.id]) == {}
     assert allocated_totals(session, other.workspace_id, [credit.id]) == {}
+
+
+# --- invariant 2: re-importing a statement adds nothing -----------------------------------------------
+
+
+def test_reimporting_a_statement_adds_nothing(client, auth_headers: dict, session: Session) -> None:
+    from app.transactions.models import Transaction
+
+    statement = (Path(__file__).parent / "fixtures" / "statements" / "bank_a.csv").read_bytes()
+
+    def import_statement() -> dict:
+        response = client.post(
+            "/api/statements/import", files={"file": ("bank_a.csv", statement, "text/csv")}, headers=auth_headers
+        )
+        assert response.status_code == 200, response.text
+        return response.json()
+
+    first = import_statement()
+    rows_after_first = session.exec(select(func.count()).select_from(Transaction)).one()
+    second = import_statement()
+
+    assert first["added"] == 4
+    assert second["added"] == 0
+    assert session.exec(select(func.count()).select_from(Transaction)).one() == rows_after_first
