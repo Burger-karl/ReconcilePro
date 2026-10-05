@@ -116,3 +116,24 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 ## D-16 — Audit rows are written in the same commit as the change
 - **Decision:** `audit.service.record()` only adds the row to the session; the calling service commits once.
 - **Why:** a change without its audit row (or an audit row for a change that rolled back) would make the trail lie (invariant 7).
+
+## D-17 — allocate() locks the bank line first, then the invoice, and re-sums after locking
+- **Decision:** `SELECT ... FOR UPDATE` on the transaction row, then on the invoice row, always in that order. Existing
+  non-reversed allocations are summed only after both locks are held.
+- **Why:** two accountants (or an accountant and a webhook) can allocate at the same instant. The lock makes the second
+  request wait; READ COMMITTED means its sum then includes the first request's committed allocation, so it can't
+  over-allocate. A fixed lock order prevents deadlocks (A holds the line and waits for the invoice while B holds the
+  invoice and waits for the line). `tests/test_hard_part.py` races real threads, and fails if the locks are removed.
+- **Rejected:** SERIALIZABLE isolation with retries — also correct, but harder to explain and every caller must retry.
+  A CHECK constraint can't do it either: it can't see other rows.
+
+## D-18 — allocate() and reverse() never commit
+- **Decision:** they `flush()` (so constraint errors surface immediately) and return; the caller commits.
+- **Why:** the Paystack webhook must insert the transaction and its allocation in one DB transaction (invariant 3).
+  If allocate() committed by itself, a crash between the two would leave a payment recorded but not allocated, or the
+  other way round.
+
+## D-19 — SUM() results are cast back to BIGINT
+- **Decision:** `CAST(COALESCE(SUM(amount_kobo), 0) AS BIGINT)` in `allocations.service`.
+- **Why:** PostgreSQL returns SUM of a BIGINT as NUMERIC, which psycopg turns into a Python Decimal. Casting keeps every
+  amount a plain int end to end (invariant 1).

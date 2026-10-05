@@ -12,6 +12,7 @@ from datetime import date
 from sqlalchemy import func, or_
 from sqlmodel import Session, select
 
+from app.allocations import service as allocations
 from app.audit.service import record
 from app.auth.models import User, Workspace
 from app.core.time import lagos_today, utc_now
@@ -79,14 +80,10 @@ def new_reference() -> str:
 # --- money paid so far ----------------------------------------------------------------------------
 
 
-def paid_totals(session: Session, invoice_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
-    """Kobo paid per invoice = sum of NON-reversed payment_allocations.
-
-    The payment_allocations table arrives with allocate() in feature 3; until then nothing can
-    have been paid, so this returns no totals (every invoice counts as 0 paid). This is the ONLY
-    place paid amounts are calculated, so feature 3 changes just this function.
-    """
-    return {}
+def paid_totals(session: Session, workspace_id: uuid.UUID, invoice_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
+    """Kobo paid per invoice = sum of NON-reversed payment_allocations (computed by the allocations
+    feature, which owns that table). Invoices with nothing paid are absent from the result."""
+    return allocations.invoice_paid_totals(session, workspace_id, invoice_ids)
 
 
 def to_read(invoice: Invoice, customer_name: str, paid_kobo: int, today: date | None = None) -> InvoiceRead:
@@ -114,8 +111,8 @@ def to_read(invoice: Invoice, customer_name: str, paid_kobo: int, today: date | 
     )
 
 
-def _read_many(session: Session, rows: list[tuple[Invoice, str]]) -> list[InvoiceRead]:
-    paid = paid_totals(session, [invoice.id for invoice, _ in rows])
+def _read_many(session: Session, workspace_id: uuid.UUID, rows: list[tuple[Invoice, str]]) -> list[InvoiceRead]:
+    paid = paid_totals(session, workspace_id, [invoice.id for invoice, _ in rows])
     today = lagos_today()
     return [to_read(invoice, name, paid.get(invoice.id, 0), today) for invoice, name in rows]
 
@@ -128,7 +125,7 @@ def outstanding_by_customer(session: Session, workspace_id: uuid.UUID) -> dict[u
         .where(Invoice.workspace_id == workspace_id, Invoice.status == "sent")
     ).all()
     owed: dict[uuid.UUID, int] = defaultdict(int)
-    for invoice in _read_many(session, list(rows)):
+    for invoice in _read_many(session, workspace_id, list(rows)):
         if invoice.status in ("sent", "part_paid", "overdue"):
             owed[invoice.customer_id] += invoice.outstanding_kobo
     return owed
@@ -158,7 +155,7 @@ def _get_invoice(session: Session, user: User, invoice_id: uuid.UUID) -> Invoice
 
 def _read_one(session: Session, invoice: Invoice) -> InvoiceRead:
     customer = session.get(Customer, invoice.customer_id)
-    return to_read(invoice, customer.name, paid_totals(session, [invoice.id]).get(invoice.id, 0))
+    return to_read(invoice, customer.name, paid_totals(session, invoice.workspace_id, [invoice.id]).get(invoice.id, 0))
 
 
 def get_invoice(session: Session, user: User, invoice_id: uuid.UUID) -> InvoiceRead:
@@ -192,7 +189,7 @@ def list_invoices(
                 Customer.name.icontains(term, autoescape=True),
             )
         )
-    invoices = _read_many(session, list(session.exec(query).all()))
+    invoices = _read_many(session, user.workspace_id, list(session.exec(query).all()))
     # Status is derived, so it can't be a SQL WHERE (paid/overdue aren't columns). We filter after
     # deriving; fine for an SME's few thousand invoices, and keeps one definition of status.
     if status is not None:
@@ -330,7 +327,7 @@ def void_invoice(session: Session, user: User, invoice_id: uuid.UUID, reason: st
     invoice = _get_invoice(session, user, invoice_id)
     if invoice.status == "void":
         raise InvoiceConflict("Invoice is already void")
-    if paid_totals(session, [invoice.id]).get(invoice.id, 0) > 0:
+    if paid_totals(session, invoice.workspace_id, [invoice.id]).get(invoice.id, 0) > 0:
         raise InvoiceConflict("Reverse the payments allocated to this invoice before voiding it")
     invoice.status = "void"
     record(
@@ -361,5 +358,5 @@ def get_public_invoice(session: Session, token: str) -> PublicInvoice:
     if row is None:
         raise InvoiceNotFound
     invoice, customer_name, business_name = row
-    read = to_read(invoice, customer_name, paid_totals(session, [invoice.id]).get(invoice.id, 0))
+    read = to_read(invoice, customer_name, paid_totals(session, invoice.workspace_id, [invoice.id]).get(invoice.id, 0))
     return PublicInvoice(business_name=business_name, **read.model_dump(include=set(PublicInvoice.model_fields) - {"business_name"}))

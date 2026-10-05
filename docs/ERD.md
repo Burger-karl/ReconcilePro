@@ -121,6 +121,9 @@ erDiagram
 | transactions | `UNIQUE (source, external_reference)` | #3 duplicate Paystack webhook pays once (NULLs don't collide) |
 | transactions | `CHECK (amount_kobo > 0)` | debits are not imported in the MVP |
 | payment_allocations | `CHECK (amount_kobo > 0)` | no zero or negative allocations |
+| payment_allocations | `CHECK (method IN ('auto','suggested','manual'))` | how it was matched, for the audit trail |
+| payment_allocations | `CHECK ((reversed_at IS NULL) = (reversal_reason IS NULL))` | #7 a reversal always records why |
+| transactions | `CHECK (kind IN ('credit','settlement'))` | #6 settlements are marked and never matched |
 | payment_allocations | index `(invoice_id)`, index `(transaction_id)` | allocate() re-sums by both sides |
 | audit_events | index `(workspace_id, created_at)` | audit page and dashboard activity feed |
 | all tenant tables | index `(workspace_id)` | #8 every query filters by workspace |
