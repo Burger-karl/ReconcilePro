@@ -16,7 +16,7 @@ so prefer simple, readable code over clever code, and explain non-obvious choice
 2. Re-importing a statement adds nothing: unique(workspace_id, fingerprint) + INSERT ... ON CONFLICT DO NOTHING.
 3. A duplicate Paystack webhook pays once: unique(source, external_reference) and the allocation is
    created in the same DB transaction as the transaction insert.
-4. Every money movement goes through `backend/app/services/allocation.py::allocate()`. It locks rows
+4. Every money movement goes through `backend/app/allocations/service.py::allocate()`. It locks rows
    with SELECT ... FOR UPDATE, re-sums existing allocations, and rejects if the bank line OR the invoice
    would be over-allocated. Never insert into payment_allocations anywhere else.
 5. Invoice paid/part_paid/overdue status is DERIVED from non-reversed allocations. Only draft/sent/void are stored.
@@ -31,7 +31,9 @@ so prefer simple, readable code over clever code, and explain non-obvious choice
 - Only sent / part_paid / overdue invoices are candidates. Always return human-readable reasons.
 
 ## Conventions
-- Routes in app/api are thin: validate, call a service, return. Logic lives in app/services.
+- Backend is organised by feature: `app/<feature>/` holds models.py, schemas.py, service.py, router.py (docs/DECISIONS.md D-06).
+- Routers are thin: validate, call their own feature's service, return. Logic lives in service.py.
+  A feature may call another feature's service, never its router.
 - Matching functions are pure (no DB writes); allocation is the only writer of allocations.
 - Write tests first for anything touching money. Test files: backend/tests/test_*.py.
 - Small diffs, one feature per session. Do not add features listed under "Later" in docs/ (bank feeds, FIRS integration, WhatsApp).
@@ -45,4 +47,5 @@ so prefer simple, readable code over clever code, and explain non-obvious choice
 - API types: `cd frontend && npx openapi-typescript http://localhost:8000/openapi.json -o types/api.ts`
 
 ## Docs to read before planning a feature
-docs/RESEARCH.md, docs/ERD.md, docs/API.md, docs/DECISIONS.md
+docs/RESEARCH.md, docs/ERD.md, docs/API.md, docs/DECISIONS.md.
+For UI work also read design-system/reconcile/MASTER.md and the matching pages/<page>.md override.

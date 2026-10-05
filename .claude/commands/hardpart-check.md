@@ -6,7 +6,7 @@ Run `git diff` (and `git diff --staged`) and review it against the 8 invariants 
 For each invariant, answer: untouched / upheld (cite file:line) / VIOLATED (explain).
 Specifically look for:
 - float or Decimal used for money
-- any insert into payment_allocations outside services/allocation.py
+- any insert into payment_allocations outside app/allocations/service.py
 - an invoice status written directly instead of derived
 - a query without a workspace_id filter
 - a fingerprint or unique constraint that is missing or changed
