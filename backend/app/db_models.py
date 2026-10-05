@@ -8,4 +8,6 @@ so a table that is not imported here is invisible to them. Add one line per feat
 
 from sqlmodel import SQLModel
 
+from app.auth import models as auth_models  # noqa: F401
+
 metadata = SQLModel.metadata

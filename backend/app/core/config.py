@@ -16,7 +16,8 @@ class Settings(BaseSettings):
     test_database_url: str = "postgresql+psycopg://reconcile:reconcile@localhost:5433/reconcile_test"
 
     # Used to sign login tokens. The default only exists so local dev starts; Render sets a real one.
-    jwt_secret: str = "dev-only-change-me"
+    # HS256 needs a key of at least 32 bytes (RFC 7518). Generate one with: python -c "import secrets; print(secrets.token_urlsafe(48))"
+    jwt_secret: str = "dev-only-insecure-secret-change-me-in-production"
     jwt_expire_minutes: int = 60 * 24
 
     paystack_secret_key: str = ""
