@@ -11,12 +11,16 @@ from pathlib import Path
 # Make `import app` work when run as `python scripts/erd.py`.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from sqlalchemy.dialects import postgresql  # noqa: E402
+
 from app.db_models import metadata  # noqa: E402
 
 
 def column_line(column) -> str:
     """One Mermaid attribute line, e.g. `bigint amount_kobo FK`."""
-    type_name = str(column.type).lower().replace(" ", "_")
+    # Compile for PostgreSQL so types read as the database stores them (uuid, timestamptz, bigint).
+    type_name = column.type.compile(dialect=postgresql.dialect()).lower()
+    type_name = type_name.replace("timestamp with time zone", "timestamptz").replace(" ", "_")
     keys = []
     if column.primary_key:
         keys.append("PK")
