@@ -55,3 +55,24 @@ def client(session: Session) -> Iterator[TestClient]:
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+def register_headers(client: TestClient, email: str, workspace_name: str) -> dict[str, str]:
+    response = client.post(
+        "/api/auth/register",
+        json={"email": email, "password": "correct-horse-1", "workspace_name": workspace_name},
+    )
+    assert response.status_code == 201, response.text
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+@pytest.fixture
+def auth_headers(client: TestClient) -> dict[str, str]:
+    """Logged-in owner of workspace "Adaeze Foods"."""
+    return register_headers(client, "ada@adaezefoods.ng", "Adaeze Foods")
+
+
+@pytest.fixture
+def other_auth_headers(client: TestClient) -> dict[str, str]:
+    """Owner of a DIFFERENT workspace, for invariant 8 (workspace isolation) tests."""
+    return register_headers(client, "kola@kolasons.ng", "Kola & Sons")

@@ -5,14 +5,12 @@ the current user's workspace (invariant 8).
 """
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import CheckConstraint, Column, DateTime
 from sqlmodel import Field, SQLModel
 
-
-def utc_now() -> datetime:
-    return datetime.now(UTC)
+from app.core.time import utc_now
 
 
 class Workspace(SQLModel, table=True):

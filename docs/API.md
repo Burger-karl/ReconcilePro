@@ -34,10 +34,10 @@ Conventions:
 |--------|------|--------------|---------|-------|
 | GET | `/api/invoices` | `?status=paid\|part_paid\|overdue\|sent\|draft\|void&customer_id=&q=` | list with derived `status`, `paid_kobo`, `outstanding_kobo` | status filter works on the derived value |
 | POST | `/api/invoices` | `customer_id, description, subtotal_kobo, issue_date, due_date` | invoice (draft) | server computes `vat_kobo`, `total_kobo`, `number`, `reference` (D-02) |
-| GET | `/api/invoices/{id}` | — | invoice + allocations (incl. reversed) | |
-| PATCH | `/api/invoices/{id}` | fields above | invoice | only while `draft` |
-| POST | `/api/invoices/{id}/send` | — | invoice | `draft → sent`, sets `sent_at`, `public_token`; emails customer via Resend |
-| POST | `/api/invoices/{id}/void` | `reason` | invoice | rejected with 409 if it has non-reversed allocations |
+| GET | `/api/invoices/{id}` | — | invoice | allocation history is added in feature 3 |
+| PATCH | `/api/invoices/{id}` | fields above | invoice | only while `draft` (else 409); VAT and total recomputed |
+| POST | `/api/invoices/{id}/send` | — | invoice | `draft → sent`, sets `sent_at`, `public_token`; 409 if not draft. Email via Resend in feature 7 |
+| POST | `/api/invoices/{id}/void` | `reason` (required) | invoice | 409 if already void or if it has non-reversed allocations |
 
 ## public — `app/invoices/public_router.py`
 | Method | Path | Body | Returns | Notes |

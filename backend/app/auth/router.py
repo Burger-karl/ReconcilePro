@@ -8,7 +8,7 @@ from app.auth.schemas import LoginRequest, MeResponse, RegisterRequest, TokenRes
 from app.core.deps import CurrentUser, SessionDep
 from app.core.security import create_access_token
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 def token_response(user: User) -> TokenResponse:

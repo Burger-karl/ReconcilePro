@@ -51,7 +51,8 @@ erDiagram
         uuid workspace_id FK
         uuid customer_id FK
         text number "UK with workspace_id, e.g. INV-0042"
-        text reference "UK with workspace_id, payer quotes it"
+        text reference "UK with workspace_id, payer quotes it, e.g. RCN-7K4Q2M"
+        text description
         text status "draft | sent | void ONLY"
         date issue_date
         date due_date
@@ -114,6 +115,8 @@ erDiagram
 | invoices | `UNIQUE (workspace_id, reference)` | exact-reference matching must find one invoice |
 | invoices | `UNIQUE (public_token)` | public link must be unguessable and unique |
 | invoices | `CHECK (status IN ('draft','sent','void'))` | #5 paid/part_paid/overdue are derived, never stored |
+| invoices | `CHECK (subtotal_kobo > 0)`, `CHECK (vat_kobo >= 0)`, `CHECK (total_kobo = subtotal_kobo + vat_kobo)` | #1 the database refuses money that doesn't add up |
+| invoices | `CHECK (due_date >= issue_date)` | an invoice can't be due before it was issued |
 | transactions | `UNIQUE (workspace_id, fingerprint)` | #2 re-importing a statement adds nothing |
 | transactions | `UNIQUE (source, external_reference)` | #3 duplicate Paystack webhook pays once (NULLs don't collide) |
 | transactions | `CHECK (amount_kobo > 0)` | debits are not imported in the MVP |

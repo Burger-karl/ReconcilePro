@@ -86,3 +86,33 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 - **Why:** Paystack references are globally unique, and the webhook arrives before we trust which workspace it is for.
   A duplicate webhook hits this constraint and the whole DB transaction (insert + allocation) rolls back (invariant 3).
   Bank statement lines leave `external_reference` NULL, and NULLs never collide in a Postgres unique constraint.
+
+## D-12 — Invoices have a number AND a separate payment reference
+- **Decision:** `number` is sequential per workspace (`INV-0001`), for humans. `reference` is random (`RCN-7K4Q2M`, 6 characters
+  from an alphabet without 0/O/1/I/L), and it is what the payer is asked to quote on the transfer.
+- **Why:** exact-reference matching scans free-text bank narrations. "INV-0001" exists in every workspace and looks like
+  other companies' invoice numbers, so it would cause false matches. A random code with a fixed prefix is distinctive,
+  and leaving out lookalike characters reduces typos when customers copy it into a banking app.
+- **Rejected:** using the invoice number as the reference — ambiguous in narrations.
+
+## D-13 — "Today" is the date in Lagos
+- **Decision:** overdue checks and default dates use `lagos_today()` (UTC+1, no daylight saving). Timestamps are stored in UTC.
+- **Why:** between 00:00 and 01:00 in Lagos it is still the previous day in UTC; an invoice due "yesterday" would not
+  yet show as overdue. A fixed +1 offset is exact for Nigeria and needs no timezone database on Windows.
+
+## D-14 — Invoice numbers are allocated under a workspace row lock
+- **Decision:** `_next_number()` runs `SELECT ... FROM workspaces WHERE id = :ws FOR UPDATE`, then counts the workspace's invoices.
+- **Why:** two "create invoice" clicks at the same moment would otherwise both count N and both pick N+1; the unique
+  constraint would then reject one with a confusing error. The lock makes them take turns and is released at commit.
+  Invoices are never deleted (only voided), so count + 1 never reuses a number.
+- **Rejected:** a Postgres sequence — one global sequence would leave gaps and not restart per workspace.
+
+## D-15 — Status filters run after the status is derived
+- **Decision:** `GET /api/invoices?status=overdue` loads the workspace's invoices, derives each status in Python, then filters.
+- **Why:** paid/part_paid/overdue are not columns (D-05), so they can't be a SQL WHERE without copying the rules into SQL.
+  One definition of status is worth more than speed at SME volumes (hundreds to a few thousand invoices).
+- **Revisit if:** a workspace has tens of thousands of invoices.
+
+## D-16 — Audit rows are written in the same commit as the change
+- **Decision:** `audit.service.record()` only adds the row to the session; the calling service commits once.
+- **Why:** a change without its audit row (or an audit row for a change that rolled back) would make the trail lie (invariant 7).
