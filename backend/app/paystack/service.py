@@ -71,10 +71,16 @@ def start_payment(session: Session, token: str) -> PaymentLink:
         # Paystack's initialise requires an email address (D-34).
         raise PaymentNotPossible("Online payment isn't set up for this invoice. Please pay by bank transfer.")
 
+    invoice_id = invoice.id
+    # Nothing was written, so end the read-only database transaction BEFORE the slow Paystack call (up to 10s).
+    # Otherwise the pooled connection sits idle "in transaction" the whole time. (rollback() also expires
+    # loaded rows, which is why invoice_id was copied out first.)
+    session.rollback()
+
     url = client.initialize_transaction(
         email=customer_email,
         amount_kobo=read.outstanding_kobo,  # only what is still owed, so a card payment can't overpay
-        invoice_id=invoice.id,
+        invoice_id=invoice_id,
         callback_url=f"{settings.frontend_url}/i/{token}",  # Paystack sends the customer back to the invoice page
     )
     return PaymentLink(authorization_url=url)

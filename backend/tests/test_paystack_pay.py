@@ -169,3 +169,39 @@ def test_pay_then_webhook_round_trip_marks_invoice_paid(client: TestClient, sess
 
     assert outcome == "allocated"
     assert invoices.get_invoice(session, owner, invoice.id).status == "paid"
+
+
+def test_no_database_transaction_is_held_open_during_paystack_call(client: TestClient, session: Session, owner: User,
+                                                                   monkeypatch: pytest.MonkeyPatch) -> None:
+    # The Paystack call can take up to 10 seconds. Holding a database transaction across it would tie up a
+    # pooled connection for nothing, since start_payment only reads.
+    invoice = make_invoice(session, owner)
+    token = publish(session, invoice)
+    seen: list[bool] = []
+
+    def fake_initialize(**kwargs) -> str:
+        seen.append(session.in_transaction())
+        return CHECKOUT_URL
+
+    monkeypatch.setattr(paystack_client, "initialize_transaction", fake_initialize)
+
+    assert pay(client, token).status_code == 200
+    assert seen == [False]
+
+
+@pytest.mark.parametrize("body", [
+    {"status": True, "data": None},
+    {"status": True, "data": {"access_code": "abc"}},  # no authorization_url
+], ids=["no-data", "no-url"])
+def test_initialize_malformed_answer_is_unavailable(monkeypatch: pytest.MonkeyPatch, body: dict) -> None:
+    import httpx
+
+    def fake_post(url: str, **kwargs) -> httpx.Response:
+        return httpx.Response(200, json=body, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(paystack_client.httpx, "post", fake_post)
+
+    with pytest.raises(PaystackUnavailable):
+        paystack_client.initialize_transaction(
+            email="kola@kolasons.ng", amount_kobo=INVOICE_TOTAL, invoice_id=uuid.uuid4(), callback_url="http://x/i/t"
+        )

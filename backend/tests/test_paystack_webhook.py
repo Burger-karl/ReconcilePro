@@ -454,3 +454,76 @@ def test_verify_success_is_parsed(monkeypatch: pytest.MonkeyPatch) -> None:
     verified_charge = paystack_client.verify_transaction("ref-1")
 
     assert verified_charge == charge("ref-1", invoice_id)
+
+
+# --- malformed Paystack answers: retry later, never a 500 or a wrong row ---------------------------------------
+
+
+def good_verify_data(**changes) -> dict:
+    data = {
+        "reference": "ref-1", "status": "success", "currency": "NGN", "amount": INVOICE_TOTAL,
+        "paid_at": "2026-10-06T09:30:00.000Z", "channel": "card", "metadata": {"invoice_id": str(uuid.uuid4())},
+        "customer": {"first_name": "Kola", "last_name": "Adeyemi", "email": "kola@kolasons.ng"},
+    }
+    data.update(changes)
+    return data
+
+
+@pytest.mark.parametrize("body", [
+    {"status": True, "data": None},  # no data at all
+    {"status": True, "data": good_verify_data(paid_at=None)},  # missing payment time
+    {"status": True, "data": good_verify_data(amount="lots")},  # amount not a number
+    {"status": True, "data": good_verify_data(amount=107_500.5)},  # half a kobo is not money
+    {"status": True, "data": good_verify_data(paid_at="yesterday")},  # unreadable date
+], ids=["no-data", "no-paid-at", "amount-text", "amount-fraction", "bad-date"])
+def test_verify_malformed_answer_means_retry_later(monkeypatch: pytest.MonkeyPatch, body: dict) -> None:
+    paystack_answers(monkeypatch, 200, body)
+
+    with pytest.raises(PaystackUnavailable):
+        paystack_client.verify_transaction("ref-1")
+
+
+def test_verify_non_json_answer_means_retry_later(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_get(url: str, **kwargs) -> httpx.Response:
+        return httpx.Response(200, text="<html>Bad gateway</html>", request=httpx.Request("GET", url))
+
+    monkeypatch.setattr(paystack_client.httpx, "get", fake_get)
+
+    with pytest.raises(PaystackUnavailable):
+        paystack_client.verify_transaction("ref-1")
+
+
+def test_malformed_verify_makes_webhook_answer_502(client: TestClient, session: Session, invoice: Invoice,
+                                                   monkeypatch: pytest.MonkeyPatch) -> None:
+    paystack_answers(monkeypatch, 200, {"status": True, "data": None})
+
+    response = post(client, event_body("ref-1", invoice.id))
+
+    assert response.status_code == 502
+    assert count(session, Transaction) == 0
+
+
+def test_verify_paid_at_without_timezone_is_read_as_utc(monkeypatch: pytest.MonkeyPatch) -> None:
+    # 23:30 UTC is 00:30 next day in Lagos (D-13). Without this, a naive time would be read in the server's zone.
+    paystack_answers(monkeypatch, 200, {"status": True, "data": good_verify_data(paid_at="2026-10-06T23:30:00")})
+
+    verified_charge = paystack_client.verify_transaction("ref-1")
+
+    assert verified_charge.paid_at == datetime(2026, 10, 6, 23, 30, tzinfo=UTC)
+
+
+# --- long references are stored, not refused ---------------------------------------------------------------------
+
+
+def test_long_paystack_reference_is_recorded(client: TestClient, session: Session, invoice: Invoice,
+                                             verified: dict) -> None:
+    # Payments started outside our pay endpoint can carry any reference the merchant chose. A too-narrow column
+    # would fail the insert, answer 500, and Paystack would retry forever without the money ever landing.
+    reference = "R" * 150
+    verified[reference] = charge(reference, invoice.id)
+
+    response = post(client, event_body(reference, invoice.id))
+
+    assert response.status_code == 200, response.text
+    assert response.json() == {"status": "allocated"}
+    assert session.exec(select(Transaction)).one().external_reference == reference

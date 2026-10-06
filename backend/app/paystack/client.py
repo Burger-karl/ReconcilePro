@@ -4,7 +4,7 @@ Docs: https://paystack.com/docs/api/transaction/#verify
 """
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from urllib.parse import quote
 
 import httpx
@@ -18,7 +18,10 @@ TIMEOUT_SECONDS = 10
 
 
 class PaystackUnavailable(Exception):
-    """Paystack couldn't be asked (network error, timeout, 5xx). The webhook answers 502 so Paystack retries (D-32)."""
+    """Paystack couldn't be asked, or its answer can't be trusted yet (network error, 5xx, 429, unreadable body).
+
+    The webhook answers 502 so Paystack retries (D-32, D-35); the pay button shows "try again".
+    """
 
 
 def verify_transaction(reference: str) -> VerifiedCharge | None:
@@ -38,16 +41,30 @@ def verify_transaction(reference: str) -> VerifiedCharge | None:
         # Answering "ignored" would make Paystack stop retrying and lose a real payment, so retry later.
         raise PaystackUnavailable(f"Paystack answered {response.status_code}")
 
-    data = response.json().get("data") or {}
+    try:
+        return _charge_from(response.json()["data"])
+    except (ValueError, KeyError, TypeError, AttributeError) as error:
+        # A 200 we can't read (HTML error page, missing field, amount that isn't whole kobo). Nothing has been
+        # written yet, so asking Paystack to retry is safe; recording a half-understood payment is not.
+        # (pydantic's ValidationError and json's JSONDecodeError are both ValueErrors.)
+        raise PaystackUnavailable(f"Unreadable answer from Paystack: {error!r}") from error
+
+
+def _charge_from(data: dict) -> VerifiedCharge:
     customer = data.get("customer") or {}
     full_name = " ".join(part for part in (customer.get("first_name"), customer.get("last_name")) if part)
+    # Paystack's JSON has used both spellings; take whichever is present.
+    paid_at = datetime.fromisoformat(data.get("paid_at") or data["paidAt"])
+    if paid_at.tzinfo is None:
+        # Paystack sends UTC ("...Z"). If a time ever arrives without a zone, say so explicitly; otherwise
+        # astimezone() would treat it as the server's local time and could shift the Lagos date (D-13).
+        paid_at = paid_at.replace(tzinfo=UTC)
     return VerifiedCharge(
         reference=data["reference"],
         status=data["status"],
         currency=data["currency"],
         amount_kobo=data["amount"],
-        # Paystack's JSON has used both spellings; take whichever is present.
-        paid_at=datetime.fromisoformat(data.get("paid_at") or data["paidAt"]),
+        paid_at=paid_at,
         invoice_id=_invoice_id(data.get("metadata")),
         payer_name=full_name or customer.get("email"),
         channel=data.get("channel"),
@@ -76,11 +93,15 @@ def initialize_transaction(*, email: str, amount_kobo: int, invoice_id: uuid.UUI
         )
     except httpx.HTTPError as error:
         raise PaystackUnavailable(str(error)) from error
-    body = response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
-    if response.status_code != 200 or not body.get("status"):
-        # Any refusal (bad key, bad email) means the customer can't pay right now; the router answers 502.
-        raise PaystackUnavailable(f"Paystack answered {response.status_code}: {body.get('message', '')}")
-    return body["data"]["authorization_url"]
+    try:
+        body = response.json()
+        if response.status_code != 200 or not body.get("status"):
+            # Any refusal (bad key, bad email) means the customer can't pay right now; the router answers 502.
+            raise PaystackUnavailable(f"Paystack answered {response.status_code}: {body.get('message', '')}")
+        return body["data"]["authorization_url"]
+    except (ValueError, KeyError, TypeError, AttributeError) as error:
+        # Not JSON, or JSON without the checkout URL: same as Paystack being down for the customer.
+        raise PaystackUnavailable(f"Unreadable answer from Paystack (HTTP {response.status_code})") from error
 
 
 def _invoice_id(metadata: object) -> uuid.UUID | None:

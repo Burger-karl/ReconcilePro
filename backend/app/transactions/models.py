@@ -36,6 +36,8 @@ class Transaction(SQLModel, table=True):
     bank_reference: str | None = Field(default=None, max_length=100)
     balance_kobo: int | None = Field(default=None, sa_type=BigInteger)  # running balance, if the bank gives one
     payer_name: str | None = Field(default=None, max_length=200)
-    external_reference: str | None = Field(default=None, max_length=100)  # Paystack reference
+    # Paystack reference. TEXT, not VARCHAR(100): a merchant can choose any reference, and a too-long one would
+    # fail the insert, answer 500 and make Paystack retry forever without the money ever being recorded.
+    external_reference: str | None = Field(default=None, sa_type=Text)
     fingerprint: str = Field(max_length=64)  # sha256 hex, see docs/DECISIONS.md D-03
     created_at: datetime = Field(default_factory=utc_now, sa_type=DateTime(timezone=True))

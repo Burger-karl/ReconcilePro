@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, StrictInt
 
 
 class VerifiedCharge(BaseModel):
@@ -13,7 +13,9 @@ class VerifiedCharge(BaseModel):
     reference: str
     status: str  # "success", "failed", "abandoned", ...
     currency: str
-    amount_kobo: int  # Paystack already sends NGN amounts in kobo, as an integer (invariant 1)
+    # Paystack already sends NGN amounts in kobo, as an integer (invariant 1). StrictInt refuses 107500.5,
+    # "107500" and True instead of quietly converting them: a malformed amount must never become money.
+    amount_kobo: StrictInt
     paid_at: datetime
     invoice_id: uuid.UUID | None  # metadata.invoice_id, set when the payment was started from our invoice page
     payer_name: str | None
