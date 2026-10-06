@@ -31,10 +31,12 @@ def verify_transaction(reference: str) -> VerifiedCharge | None:
         )
     except httpx.HTTPError as error:
         raise PaystackUnavailable(str(error)) from error
-    if response.status_code >= 500:
-        raise PaystackUnavailable(f"Paystack answered {response.status_code}")
+    if response.status_code in (400, 404):
+        return None  # Paystack has never heard of this reference, e.g. a forged event
     if response.status_code != 200:
-        return None  # 400/404: unknown reference, e.g. a forged event
+        # Anything else (5xx, 429 rate limit, 401/403 bad key, 408 timeout) says nothing about the payment.
+        # Answering "ignored" would make Paystack stop retrying and lose a real payment, so retry later.
+        raise PaystackUnavailable(f"Paystack answered {response.status_code}")
 
     data = response.json().get("data") or {}
     customer = data.get("customer") or {}

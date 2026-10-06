@@ -162,6 +162,16 @@ def test_wrong_signature_returns_401_and_writes_nothing(client: TestClient, sess
     assert count(session, PaymentAllocation) == 0
 
 
+def test_non_ascii_signature_is_401_not_500(client: TestClient) -> None:
+    # hmac.compare_digest raises TypeError on non-ASCII str; a junk header must still just be refused.
+    body = b'{"event":"charge.success"}'
+    assert signature_is_valid(body, "é" * 128, TEST_SECRET) is False
+
+    response = client.post(URL, content=body, headers={"x-paystack-signature": ("é" * 128).encode("latin-1")})
+
+    assert response.status_code == 401
+
+
 def test_signature_checked_before_json_parsed(client: TestClient) -> None:
     # Garbage with a bad signature must be a 401, not a 400: unauthenticated bytes never reach the parser.
     response = post(client, b"{not json", signature="0" * 128)
@@ -368,3 +378,79 @@ def test_transaction_belongs_to_the_invoices_workspace(client: TestClient, sessi
 
     assert client.get("/api/transactions", headers=ada).json()["total"] == 1
     assert client.get("/api/transactions", headers=kola).json()["total"] == 0
+
+
+# --- invariant 3 holds on every unique index -----------------------------------------------------------------
+
+
+def test_clash_on_fingerprint_index_is_a_duplicate_not_a_500(client: TestClient, session: Session, owner: User,
+                                                             invoice: Invoice, verified: dict) -> None:
+    # transactions has TWO unique indexes a Paystack row can hit: (source, external_reference) and
+    # (workspace_id, fingerprint). When two copies race, the clash can land on either one. Here we force
+    # the fingerprint one: whichever index catches it, a repeat must be "duplicate", never an error.
+    from tests.factories import make_transaction
+
+    existing = make_transaction(session, owner, amount_kobo=INVOICE_TOTAL)
+    existing.fingerprint = hashlib.sha256(b"paystack|ref-1").hexdigest()
+    session.add(existing)
+    session.commit()
+    verified["ref-1"] = charge("ref-1", invoice.id)
+
+    response = post(client, event_body("ref-1", invoice.id))
+
+    assert response.status_code == 200, response.text
+    assert response.json() == {"status": "duplicate"}
+    assert count(session, PaymentAllocation) == 0
+
+
+# --- client.verify_transaction: which Paystack answers mean "retry later" -------------------------------------
+
+
+def paystack_answers(monkeypatch: pytest.MonkeyPatch, status_code: int, body: dict | None = None) -> None:
+    """Make httpx.get return this response, as if Paystack had sent it."""
+    def fake_get(url: str, **kwargs) -> httpx.Response:
+        return httpx.Response(status_code, json=body or {"status": False, "message": "nope"},
+                              request=httpx.Request("GET", url))
+
+    monkeypatch.setattr(paystack_client.httpx, "get", fake_get)
+
+
+@pytest.mark.parametrize("status_code", [400, 404])
+def test_verify_unknown_reference_is_none(monkeypatch: pytest.MonkeyPatch, status_code: int) -> None:
+    # Paystack has never heard of this reference (e.g. a forged event): safe to ignore for good.
+    paystack_answers(monkeypatch, status_code)
+
+    assert paystack_client.verify_transaction("ref-1") is None
+
+
+@pytest.mark.parametrize("status_code", [401, 403, 408, 429, 500, 503])
+def test_verify_other_failures_mean_retry_later(monkeypatch: pytest.MonkeyPatch, status_code: int) -> None:
+    # A revoked key, rate limit or timeout says nothing about the payment. Treating it as "ignored" would
+    # answer 200, Paystack would stop retrying, and a real payment would never be recorded.
+    paystack_answers(monkeypatch, status_code)
+
+    with pytest.raises(PaystackUnavailable):
+        paystack_client.verify_transaction("ref-1")
+
+
+def test_rate_limited_verify_makes_webhook_answer_502(client: TestClient, session: Session, invoice: Invoice,
+                                                      monkeypatch: pytest.MonkeyPatch) -> None:
+    paystack_answers(monkeypatch, 429)
+
+    response = post(client, event_body("ref-1", invoice.id))
+
+    assert response.status_code == 502
+    assert count(session, Transaction) == 0
+
+
+def test_verify_success_is_parsed(monkeypatch: pytest.MonkeyPatch) -> None:
+    invoice_id = uuid.uuid4()
+    paystack_answers(monkeypatch, 200, {"status": True, "data": {
+        "reference": "ref-1", "status": "success", "currency": "NGN", "amount": INVOICE_TOTAL,
+        "paid_at": "2026-10-06T09:30:00.000Z", "channel": "card", "metadata": {"invoice_id": str(invoice_id)},
+        "customer": {"first_name": "Kola", "last_name": "Adeyemi", "email": "kola@kolasons.ng"},
+    }})
+
+    verified_charge = paystack_client.verify_transaction("ref-1")
+
+    assert verified_charge == charge("ref-1", invoice_id)

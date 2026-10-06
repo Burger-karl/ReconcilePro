@@ -88,10 +88,12 @@ def signature_is_valid(raw_body: bytes, signature: str | None, secret: str) -> b
     if not secret or not signature:
         # No secret configured means we can't tell real events from fakes: refuse them all.
         return False
-    expected = hmac.new(secret.encode(), raw_body, hashlib.sha512).hexdigest()
+    expected = hmac.new(secret.encode(), raw_body, hashlib.sha512).hexdigest().encode()
     # compare_digest takes the same time however many characters match, so an attacker can't
-    # guess the signature one character at a time by timing our responses.
-    return hmac.compare_digest(expected, signature)
+    # guess the signature one character at a time by timing our responses. It compares bytes here:
+    # given str with non-ASCII characters it raises TypeError, and a junk header must be a 401, not a 500.
+    # Headers arrive decoded as latin-1, so encoding back to latin-1 gives the exact bytes that were sent.
+    return hmac.compare_digest(expected, signature.encode("latin-1", errors="replace"))
 
 
 def handle_event(session: Session, payload: dict[str, Any]) -> str:
@@ -146,7 +148,11 @@ def record_charge(session: Session, charge: VerifiedCharge) -> str:
     statement = (
         insert(Transaction)
         .values(row)
-        .on_conflict_do_nothing(constraint="uq_transactions_source_external_reference")
+        # No constraint named on purpose: a repeat can clash on (source, external_reference) OR on
+        # (workspace_id, fingerprint), since the fingerprint comes from the reference. Postgres only skips
+        # clashes on the constraint you name; any other one would raise. Without a name, every unique
+        # constraint counts, and both mean the same thing here: "we already have this payment".
+        .on_conflict_do_nothing()
         .returning(Transaction.id)
     )
     transaction_id = session.exec(statement).scalar_one_or_none()

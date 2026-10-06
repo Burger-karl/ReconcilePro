@@ -235,3 +235,10 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
   overpay unless a bank transfer lands between opening and finishing checkout; D-31 sends that rare case to the queue.
 - **Rejected:** asking the payer to type an email on the public page — another form field and validation for a case
   the business can fix by adding the customer's email. Revisit if many customers have none.
+
+## D-35 — Only 400/404 from verify-transaction means "ignore"; everything else means "retry"
+- **Decision:** refines D-32. If Paystack answers 400 or 404 (it doesn't know the reference), the webhook returns
+  200 `ignored`. Any other non-200 answer (429 rate limit, 401/403 bad key, 408, 5xx) returns 502.
+- **Why:** a 200 makes Paystack stop retrying. A rate limit or rotated key says nothing about the payment, so
+  answering 200 would lose a real card payment for good: it would surface only inside a settlement line, and those
+  are never matched (invariant 6). Retries are harmless (invariant 3).
