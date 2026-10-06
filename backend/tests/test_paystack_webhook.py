@@ -556,3 +556,70 @@ def test_allocation_refused_after_writing_leaves_nothing_behind(client: TestClie
     actions = session.exec(select(AuditEvent.action).where(AuditEvent.workspace_id == owner.workspace_id)).all()
     assert actions == ["paystack.payment_received"]  # no orphan allocation.created
     assert paid(session, invoice) == 0
+
+
+# --- sequences the reviewer walked through ---------------------------------------------------------------------
+
+
+def test_two_checkouts_paid_for_one_invoice_fill_it_exactly_once(client: TestClient, session: Session,
+                                                                 invoice: Invoice, verified: dict) -> None:
+    # The customer double-clicks "Pay", gets two checkouts and completes both. Each is a different Paystack
+    # reference for the full amount. The first pays the invoice; the second can't over-fill it (invariant 4)
+    # and waits in the queue for the accountant to refund or reassign (D-31).
+    verified["ref-1"] = charge("ref-1", invoice.id)
+    verified["ref-2"] = charge("ref-2", invoice.id)
+
+    first = post(client, event_body("ref-1", invoice.id))
+    second = post(client, event_body("ref-2", invoice.id))
+
+    assert first.json() == {"status": "allocated"}
+    assert second.json() == {"status": "unallocated"}
+    assert count(session, Transaction) == 2
+    assert count(session, PaymentAllocation) == 1
+    assert paid(session, invoice) == INVOICE_TOTAL
+
+
+def test_retry_after_accountant_reversed_the_allocation_changes_nothing(client: TestClient, session: Session,
+                                                                         owner: User, invoice: Invoice,
+                                                                         verified: dict) -> None:
+    # The accountant undoes the automatic allocation (e.g. it was the wrong invoice). A late Paystack retry of the
+    # same event must not quietly put it back: the reference is already recorded, so it is a duplicate.
+    from app.allocations.service import reverse
+
+    verified["ref-1"] = charge("ref-1", invoice.id)
+    body = event_body("ref-1", invoice.id)
+    post(client, body)
+    allocation = session.exec(select(PaymentAllocation)).one()
+    reverse(session, workspace_id=owner.workspace_id, allocation_id=allocation.id, actor_user_id=owner.id,
+            reason="Customer meant a different invoice")
+    session.commit()
+
+    retry = post(client, body)
+
+    assert retry.json() == {"status": "duplicate"}
+    assert count(session, PaymentAllocation) == 1  # only the reversed one
+    assert paid(session, invoice) == 0
+
+
+# --- client.verify_transaction: field spellings and metadata shapes ----------------------------------------------
+
+
+def test_verify_accepts_the_paidAt_spelling(monkeypatch: pytest.MonkeyPatch) -> None:
+    data = good_verify_data(paid_at=None)
+    data["paidAt"] = "2026-10-06T09:30:00.000Z"
+    paystack_answers(monkeypatch, 200, {"status": True, "data": data})
+
+    assert paystack_client.verify_transaction("ref-1").paid_at == datetime(2026, 10, 6, 9, 30, tzinfo=UTC)
+
+
+@pytest.mark.parametrize("metadata", ["", None, {}, {"invoice_id": "not-a-uuid"}, {"invoice_id": None}],
+                         ids=["empty-string", "null", "empty-dict", "bad-uuid", "null-id"])
+def test_verify_payment_not_started_by_us_has_no_invoice(monkeypatch: pytest.MonkeyPatch, metadata) -> None:
+    # Payments made on the same Paystack account without our pay button carry whatever metadata they were
+    # given. That is not an error: the charge is read, with no invoice, and record_charge ignores it.
+    paystack_answers(monkeypatch, 200, {"status": True, "data": good_verify_data(metadata=metadata)})
+
+    verified_charge = paystack_client.verify_transaction("ref-1")
+
+    assert verified_charge is not None
+    assert verified_charge.invoice_id is None
