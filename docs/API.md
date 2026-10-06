@@ -43,7 +43,7 @@ Conventions:
 | Method | Path | Body | Returns | Notes |
 |--------|------|------|---------|-------|
 | GET | `/api/public/invoices/{token}` *public* | — | business name, invoice summary, derived status, outstanding | no customer list, no ids of other records |
-| POST | `/api/public/invoices/{token}/pay` *public* | — | `{authorization_url}` | initialises a Paystack transaction for the outstanding amount, `metadata.invoice_id` set |
+| POST | `/api/public/invoices/{token}/pay` *public* | — | `{authorization_url}` | initialises a Paystack transaction for the outstanding amount, `metadata.invoice_id` set, callback to `/i/{token}`. 404 unknown token; 409 if paid/void or the customer has no email (D-34); 502 if Paystack is unavailable. Writes nothing; the webhook records the money |
 
 ## statements — `app/statements/router.py`
 | Method | Path | Body | Returns | Notes |
@@ -84,4 +84,4 @@ Conventions:
 ## webhooks — `app/paystack/router.py`
 | Method | Path | Notes |
 |--------|------|-------|
-| POST | `/api/webhooks/paystack` *public* | 1. read raw body; 2. verify `x-paystack-signature` = HMAC-SHA512(raw body, secret) **before** parsing JSON, else 401; 3. on `charge.success`, confirm with Paystack verify-transaction; 4. in **one DB transaction** insert the transaction (`source=paystack`, `external_reference=reference`) and call `allocate()`; a duplicate hits `UNIQUE(source, external_reference)` and is a no-op (invariant 3); 5. return 200 quickly |
+| POST | `/api/webhooks/paystack` *public* | 1. read raw body; 2. verify `x-paystack-signature` = HMAC-SHA512(raw body, secret) **before** parsing JSON, else 401; 3. on `charge.success`, confirm with Paystack verify-transaction; 4. in **one DB transaction** insert the transaction (`source=paystack`, `external_reference=reference`) and call `allocate()`; a duplicate hits `UNIQUE(source, external_reference)` and is a no-op (invariant 3); 5. return 200 quickly with `{status: allocated\|unallocated\|duplicate\|ignored}`. 400 if the signed body isn't JSON; 502 if Paystack can't be reached, so it retries (D-30 to D-33) |

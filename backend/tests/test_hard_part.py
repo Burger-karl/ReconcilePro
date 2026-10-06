@@ -462,3 +462,98 @@ def test_reimporting_a_statement_adds_nothing(client, auth_headers: dict, sessio
     assert first["added"] == 4
     assert second["added"] == 0
     assert session.exec(select(func.count()).select_from(Transaction)).one() == rows_after_first
+
+
+# --- invariant 3: a duplicate Paystack webhook pays once -------------------------------------------------------
+
+
+def test_concurrent_duplicate_webhooks_pay_once(committed: Engine) -> None:
+    # Paystack can deliver the same event twice at the same instant. Both reach the INSERT; the second
+    # waits on the unique index until the first commits, then ON CONFLICT DO NOTHING makes it a no-op.
+    from datetime import UTC, datetime
+
+    from app.paystack.schemas import VerifiedCharge
+    from app.paystack.service import record_charge
+    from app.transactions.models import Transaction
+
+    with Session(committed) as setup:
+        owner = make_owner(setup)
+        invoice = make_invoice(setup, owner)
+        workspace_id, invoice_id = owner.workspace_id, invoice.id
+    charge = VerifiedCharge(
+        reference="ref-race", status="success", currency="NGN", amount_kobo=INVOICE_TOTAL,
+        paid_at=datetime(2026, 10, 6, 9, 30, tzinfo=UTC), invoice_id=invoice_id, payer_name=None, channel="card",
+    )
+    barrier = threading.Barrier(2)
+    results: list[str] = ["", ""]
+
+    def worker(index: int) -> None:
+        with Session(committed) as own_session:
+            barrier.wait()
+            results[index] = record_charge(own_session, charge)
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=30)
+
+    assert sorted(results) == ["allocated", "duplicate"]
+    with Session(committed) as check:
+        assert check.exec(select(func.count()).select_from(Transaction)).one() == 1
+        assert check.exec(select(func.count()).select_from(PaymentAllocation)).one() == 1
+        assert invoices.paid_totals(check, workspace_id, [invoice_id])[invoice_id] == INVOICE_TOTAL
+
+
+def test_webhook_insert_and_allocation_share_one_db_transaction(committed: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+    # If allocate() blows up after the transaction row was inserted, the insert must not survive on its own
+    # (D-18). Uses real committing sessions, so a stray commit would leave a row behind.
+    import hashlib
+    import hmac
+    import json
+    from datetime import UTC, datetime
+
+    from fastapi.testclient import TestClient
+
+    from app.core.config import settings
+    from app.core.db import get_session
+    from app.main import app
+    from app.paystack import client as paystack_client
+    from app.paystack import service as paystack_service
+    from app.paystack.schemas import VerifiedCharge
+    from app.transactions.models import Transaction
+
+    with Session(committed) as setup:
+        owner = make_owner(setup)
+        invoice_id = make_invoice(setup, owner).id
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("database went away mid-allocation")
+
+    monkeypatch.setattr(settings, "paystack_secret_key", "sk_test_secret")
+    monkeypatch.setattr(paystack_service, "allocate", boom)
+    monkeypatch.setattr(paystack_client, "verify_transaction", lambda reference: VerifiedCharge(
+        reference=reference, status="success", currency="NGN", amount_kobo=INVOICE_TOTAL,
+        paid_at=datetime(2026, 10, 6, 9, 30, tzinfo=UTC), invoice_id=invoice_id, payer_name=None, channel="card",
+    ))
+
+    def real_session():
+        with Session(committed) as own_session:
+            yield own_session
+
+    body = json.dumps({"event": "charge.success", "data": {"reference": "ref-crash"}}).encode()
+    signature = hmac.new(b"sk_test_secret", body, hashlib.sha512).hexdigest()
+    app.dependency_overrides[get_session] = real_session
+    try:
+        with TestClient(app, raise_server_exceptions=False) as test_client:
+            response = test_client.post(
+                "/api/webhooks/paystack", content=body,
+                headers={"Content-Type": "application/json", "x-paystack-signature": signature},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 500
+    with Session(committed) as check:
+        assert check.exec(select(func.count()).select_from(Transaction)).one() == 0
+        assert check.exec(select(func.count()).select_from(PaymentAllocation)).one() == 0

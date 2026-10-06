@@ -203,3 +203,35 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 ## D-29 — Match reasons contain no money amounts
 - **Decision:** reasons say "Amount equals the amount outstanding", not "… ₦90,000.00".
 - **Why:** invariant 1 says naira formatting happens only in the UI. The UI already shows both amounts next to the reasons.
+
+## D-30 — The Paystack webhook trusts only verify-transaction
+- **Decision:** after the signature check, the webhook takes only the `reference` from the body, calls Paystack's
+  verify-transaction endpoint, and records the amount, status, currency and `metadata.invoice_id` that Paystack returns.
+- **Why:** a valid signature proves Paystack sent the body once, not that it is fresh or that our secret never leaked.
+  Asking Paystack again means a replayed or forged body can't change the amount we record.
+- **Rejected:** recording straight from the webhook body — fewer calls, but one leaked secret becomes free money.
+
+## D-31 — Paystack money that can't be allocated is still recorded
+- **Decision:** if `allocate()` refuses (invoice void, or more than is outstanding), the Paystack credit is saved
+  unallocated and appears in the exception queue. Nothing is split automatically.
+- **Why:** the money really arrived; dropping it would hide it. Whether to refund, split, or move it to another
+  invoice is the accountant's call. Payments for an unknown invoice id are not stored: without the invoice there is
+  no workspace to store them in.
+
+## D-32 — Answer 502 when Paystack can't be reached
+- **Decision:** the webhook verifies synchronously. A network error, timeout or 5xx from Paystack returns 502.
+- **Why:** any non-200 makes Paystack retry later, and retries are harmless because a duplicate pays once (invariant 3).
+- **Rejected:** answering 200 at once and verifying in a background task — faster, but a failure there would be lost silently.
+
+## D-33 — One Paystack secret per deployment
+- **Decision:** `PAYSTACK_SECRET_KEY` is a single setting, used to check signatures and to call Paystack.
+- **Why:** MVP scope. Per-workspace Paystack accounts would need the workspace before the signature can be checked,
+  which changes the design (e.g. a per-workspace webhook URL).
+
+## D-34 — Online payment needs the customer's email, and asks only for what is outstanding
+- **Decision:** `POST /api/public/invoices/{token}/pay` initialises Paystack for the invoice's current outstanding
+  amount, with the customer's stored email and `metadata.invoice_id`. No email, or nothing owed (paid / void) → 409.
+- **Why:** Paystack's initialise requires an email. Asking only for the outstanding amount means a card payment can't
+  overpay unless a bank transfer lands between opening and finishing checkout; D-31 sends that rare case to the queue.
+- **Rejected:** asking the payer to type an email on the public page — another form field and validation for a case
+  the business can fix by adding the customer's email. Revisit if many customers have none.
