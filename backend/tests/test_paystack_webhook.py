@@ -527,3 +527,32 @@ def test_long_paystack_reference_is_recorded(client: TestClient, session: Sessio
     assert response.status_code == 200, response.text
     assert response.json() == {"status": "allocated"}
     assert session.exec(select(Transaction)).one().external_reference == reference
+
+
+# --- a refused allocation can't leave half of itself behind -----------------------------------------------------
+
+
+def test_allocation_refused_after_writing_leaves_nothing_behind(client: TestClient, session: Session, owner: User,
+                                                               invoice: Invoice, verified: dict,
+                                                               monkeypatch: pytest.MonkeyPatch) -> None:
+    # Today allocate() checks everything before it writes, so a refusal leaves the session clean. If a future
+    # edit moved a check after the INSERT, the webhook's commit would save a half-made allocation. The savepoint
+    # around allocate() must undo whatever it wrote, while keeping the Paystack transaction and its audit row.
+    from app.allocations import service as allocations
+    from app.paystack import service as paystack_service
+
+    def writes_then_refuses(session: Session, **kwargs):
+        allocations.allocate(session, **kwargs)  # the allocation row and its audit row are flushed
+        raise allocations.OverAllocated("invoice", 0)
+
+    monkeypatch.setattr(paystack_service, "allocate", writes_then_refuses)
+    verified["ref-1"] = charge("ref-1", invoice.id)
+
+    response = post(client, event_body("ref-1", invoice.id))
+
+    assert response.json() == {"status": "unallocated"}
+    assert count(session, Transaction) == 1  # the money is still recorded (D-31)
+    assert count(session, PaymentAllocation) == 0
+    actions = session.exec(select(AuditEvent.action).where(AuditEvent.workspace_id == owner.workspace_id)).all()
+    assert actions == ["paystack.payment_received"]  # no orphan allocation.created
+    assert paid(session, invoice) == 0

@@ -181,20 +181,24 @@ def record_charge(session: Session, charge: VerifiedCharge) -> str:
         },
     )
 
+    # begin_nested() = a SAVEPOINT inside the open database transaction. If allocate() refuses, everything it
+    # wrote is undone back to this point, while the transaction row and audit row above stay. So keeping the
+    # money doesn't depend on allocate() happening to check before it writes. (begin_nested flushes first,
+    # so those two rows are written before the savepoint, not inside it.)
     try:
-        allocate(
-            session,
-            workspace_id=workspace_id,
-            transaction_id=transaction_id,
-            invoice_id=invoice.id,
-            amount_kobo=charge.amount_kobo,
-            method="auto",
-            actor_user_id=None,
-        )
+        with session.begin_nested():
+            allocate(
+                session,
+                workspace_id=workspace_id,
+                transaction_id=transaction_id,
+                invoice_id=invoice.id,
+                amount_kobo=charge.amount_kobo,
+                method="auto",
+                actor_user_id=None,
+            )
         outcome = "allocated"
     except (OverAllocated, AllocationNotAllowed):
-        # allocate() checks before it adds anything, so the session still holds only the transaction and
-        # its audit row. Keep them: the money really arrived; the accountant decides where it goes (D-31).
+        # The money really arrived: keep it, unallocated; the accountant decides where it goes (D-31).
         outcome = "unallocated"
 
     # One commit for the transaction row, its audit row and the allocation (invariant 3, D-18).
