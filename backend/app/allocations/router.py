@@ -1,4 +1,4 @@
-"""/api/allocations routes. Undoing an allocation is a reversal, never a delete (invariant 7)."""
+"""/api/v1/allocations routes. Undoing an allocation is a reversal, never a delete (invariant 7)."""
 
 import uuid
 
@@ -9,7 +9,7 @@ from app.allocations.http import to_http
 from app.allocations.schemas import AllocationRead, ReverseRequest
 from app.core.deps import CurrentUser, SessionDep
 
-router = APIRouter(prefix="/api/allocations", tags=["Allocations"])
+router = APIRouter(prefix="/allocations", tags=["Allocations"])
 
 
 @router.post("/{allocation_id}/reverse")

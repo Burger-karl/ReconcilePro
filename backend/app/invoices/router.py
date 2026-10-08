@@ -1,4 +1,4 @@
-"""/api/invoices routes. Thin: validate, call the service, map errors to HTTP."""
+"""/api/v1/invoices routes. Thin: validate, call the service, map errors to HTTP."""
 
 import uuid
 from collections.abc import Iterator
@@ -11,7 +11,7 @@ from app.core.deps import CurrentUser, SessionDep
 from app.invoices import service
 from app.invoices.schemas import InvoiceCreate, InvoiceList, InvoiceRead, InvoiceStatus, InvoiceUpdate, VoidRequest
 
-router = APIRouter(prefix="/api/invoices", tags=["Invoices"])
+router = APIRouter(prefix="/invoices", tags=["Invoices"])
 
 
 @contextmanager

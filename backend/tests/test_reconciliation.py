@@ -28,7 +28,7 @@ def statement(*lines: tuple[str, int]) -> bytes:
 
 def import_statement(client: TestClient, headers: dict, *lines: tuple[str, int]) -> dict:
     response = client.post(
-        "/api/statements/import", files={"file": ("s.csv", statement(*lines), "text/csv")}, headers=headers
+        "/api/v1/statements/import", files={"file": ("s.csv", statement(*lines), "text/csv")}, headers=headers
     )
     assert response.status_code == 200, response.text
     return response.json()
@@ -36,26 +36,26 @@ def import_statement(client: TestClient, headers: dict, *lines: tuple[str, int])
 
 def sent_invoice(client: TestClient, headers: dict, customer_name: str = "Kola & Sons", subtotal_kobo: int = 9_000_000,
                  aliases: list[str] | None = None) -> dict:
-    customer = client.post("/api/customers", json={"name": customer_name, "aliases": aliases or []}, headers=headers).json()
+    customer = client.post("/api/v1/customers", json={"name": customer_name, "aliases": aliases or []}, headers=headers).json()
     invoice = client.post(
-        "/api/invoices",
+        "/api/v1/invoices",
         json={"customer_id": customer["id"], "description": "Supplies", "subtotal_kobo": subtotal_kobo,
               "issue_date": TODAY.isoformat(), "due_date": (TODAY + timedelta(days=14)).isoformat()},
         headers=headers,
     ).json()
-    response = client.post(f"/api/invoices/{invoice['id']}/send", headers=headers)
+    response = client.post(f"/api/v1/invoices/{invoice['id']}/send", headers=headers)
     assert response.status_code == 200, response.text
     return response.json()  # total = subtotal + 7.5% VAT
 
 
 def queue(client: TestClient, headers: dict) -> list[dict]:
-    response = client.get("/api/reconciliation/queue", headers=headers)
+    response = client.get("/api/v1/reconciliation/queue", headers=headers)
     assert response.status_code == 200, response.text
     return response.json()["items"]
 
 
 def invoice_status(client: TestClient, headers: dict, invoice_id: str) -> str:
-    return client.get(f"/api/invoices/{invoice_id}", headers=headers).json()["status"]
+    return client.get(f"/api/v1/invoices/{invoice_id}", headers=headers).json()["status"]
 
 
 # --- auto-match on import ---------------------------------------------------------------------------------
@@ -78,7 +78,7 @@ def test_import_auto_allocates_a_part_payment_by_reference(client: TestClient, a
 
     import_statement(client, auth_headers, (f"PART PAYMENT {invoice['reference'].lower()}", 5_000_000))
 
-    detail = client.get(f"/api/invoices/{invoice['id']}", headers=auth_headers).json()
+    detail = client.get(f"/api/v1/invoices/{invoice['id']}", headers=auth_headers).json()
     assert (detail["status"], detail["outstanding_kobo"]) == ("part_paid", 4_675_000)
 
 
@@ -106,23 +106,23 @@ def test_settlements_are_not_matched_or_queued(client: TestClient, auth_headers:
 def test_auto_match_endpoint_catches_up_after_an_invoice_is_sent(client: TestClient, auth_headers: dict) -> None:
     # The customer paid quoting a reference while the invoice was still a draft (drafts are never
     # candidates). Once the invoice is sent, re-running auto-match allocates it.
-    customer = client.post("/api/customers", json={"name": "Kola & Sons"}, headers=auth_headers).json()
+    customer = client.post("/api/v1/customers", json={"name": "Kola & Sons"}, headers=auth_headers).json()
     draft = client.post(
-        "/api/invoices",
+        "/api/v1/invoices",
         json={"customer_id": customer["id"], "description": "Supplies", "subtotal_kobo": 9_000_000,
               "issue_date": TODAY.isoformat(), "due_date": (TODAY + timedelta(days=14)).isoformat()},
         headers=auth_headers,
     ).json()
     first = import_statement(client, auth_headers, (f"NIP/KOLA AND SONS/{draft['reference']}", 9_675_000))
     assert (first["auto_allocated"], first["needs_review"]) == (0, 1)
-    client.post(f"/api/invoices/{draft['id']}/send", headers=auth_headers)
+    client.post(f"/api/v1/invoices/{draft['id']}/send", headers=auth_headers)
 
-    response = client.post("/api/reconciliation/auto-match", headers=auth_headers)
+    response = client.post("/api/v1/reconciliation/auto-match", headers=auth_headers)
 
     assert response.status_code == 200
     assert response.json() == {"auto_allocated": 1}
     assert invoice_status(client, auth_headers, draft["id"]) == "paid"
-    assert client.post("/api/reconciliation/auto-match", headers=auth_headers).json() == {"auto_allocated": 0}
+    assert client.post("/api/v1/reconciliation/auto-match", headers=auth_headers).json() == {"auto_allocated": 0}
 
 
 # --- the queue ----------------------------------------------------------------------------------------------
@@ -161,7 +161,7 @@ def test_queue_without_a_clear_winner_has_no_suggestion(client: TestClient, auth
 
 def accept(client: TestClient, headers: dict, transaction_id: str, invoice_id: str, amount_kobo: int, method: str = "suggested"):
     return client.post(
-        "/api/reconciliation/allocate",
+        "/api/v1/reconciliation/allocate",
         json={"transaction_id": transaction_id, "invoice_id": invoice_id, "amount_kobo": amount_kobo, "method": method},
         headers=headers,
     )
@@ -214,7 +214,7 @@ def test_allocate_rejects_bad_input(client: TestClient, auth_headers: dict, bad:
     transaction_id = queue(client, auth_headers)[0]["transaction"]["id"]
     body = {"transaction_id": transaction_id, "invoice_id": invoice["id"], "amount_kobo": 1_000, "method": "manual", **bad}
 
-    assert client.post("/api/reconciliation/allocate", json=body, headers=auth_headers).status_code == 422
+    assert client.post("/api/v1/reconciliation/allocate", json=body, headers=auth_headers).status_code == 422
 
 
 # --- reject ---------------------------------------------------------------------------------------------
@@ -226,7 +226,7 @@ def test_rejected_candidate_is_not_suggested_again(client: TestClient, auth_head
     transaction_id = queue(client, auth_headers)[0]["transaction"]["id"]
 
     response = client.post(
-        "/api/reconciliation/reject", json={"transaction_id": transaction_id, "invoice_id": invoice["id"]}, headers=auth_headers
+        "/api/v1/reconciliation/reject", json={"transaction_id": transaction_id, "invoice_id": invoice["id"]}, headers=auth_headers
     )
 
     assert response.status_code == 204
@@ -243,13 +243,13 @@ def test_reverse_puts_the_credit_back_in_the_queue(client: TestClient, auth_head
     invoice = sent_invoice(client, auth_headers)
     import_statement(client, auth_headers, (f"NIP/KOLA AND SONS/{invoice['reference']}", 9_675_000))
     allocation_id = client.get(
-        f"/api/transactions/{client.get('/api/transactions', headers=auth_headers).json()['items'][0]['id']}",
+        f"/api/v1/transactions/{client.get('/api/v1/transactions', headers=auth_headers).json()['items'][0]['id']}",
         headers=auth_headers,
     ).json()["allocations"][0]["id"]
 
-    no_reason = client.post(f"/api/allocations/{allocation_id}/reverse", json={"reason": " "}, headers=auth_headers)
-    reversed_ = client.post(f"/api/allocations/{allocation_id}/reverse", json={"reason": "Wrong invoice"}, headers=auth_headers)
-    again = client.post(f"/api/allocations/{allocation_id}/reverse", json={"reason": "Again"}, headers=auth_headers)
+    no_reason = client.post(f"/api/v1/allocations/{allocation_id}/reverse", json={"reason": " "}, headers=auth_headers)
+    reversed_ = client.post(f"/api/v1/allocations/{allocation_id}/reverse", json={"reason": "Wrong invoice"}, headers=auth_headers)
+    again = client.post(f"/api/v1/allocations/{allocation_id}/reverse", json={"reason": "Again"}, headers=auth_headers)
 
     assert no_reason.status_code == 422
     assert reversed_.status_code == 200
@@ -272,15 +272,15 @@ def test_other_workspace_sees_no_queue_and_cannot_allocate_or_reverse(
     assert queue(client, other_auth_headers) == []
     assert accept(client, other_auth_headers, transaction_id, invoice["id"], 1_000, "manual").status_code == 404
     rejected = client.post(
-        "/api/reconciliation/reject", json={"transaction_id": transaction_id, "invoice_id": invoice["id"]},
+        "/api/v1/reconciliation/reject", json={"transaction_id": transaction_id, "invoice_id": invoice["id"]},
         headers=other_auth_headers,
     )
     assert rejected.status_code == 404
 
     accept(client, auth_headers, transaction_id, invoice["id"], 9_675_000)
-    allocation_id = client.get(f"/api/transactions/{transaction_id}", headers=auth_headers).json()["allocations"][0]["id"]
+    allocation_id = client.get(f"/api/v1/transactions/{transaction_id}", headers=auth_headers).json()["allocations"][0]["id"]
     assert client.post(
-        f"/api/allocations/{allocation_id}/reverse", json={"reason": "x"}, headers=other_auth_headers
+        f"/api/v1/allocations/{allocation_id}/reverse", json={"reason": "x"}, headers=other_auth_headers
     ).status_code == 404
 
 

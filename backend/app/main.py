@@ -1,16 +1,8 @@
 """FastAPI entry point: `uvicorn app.main:app --reload`.
 
-Each feature folder exposes a `router`; include it here as features are built, e.g.
+Each feature folder exposes a `router`; include it below under the /api/v1 prefix as features are built, e.g.
     from app.allocations.router import router as allocations_router
-from app.auth.router import router as auth_router
-    app.include_router(auth_router)
-app.include_router(customers_router)
-app.include_router(invoices_router)
-app.include_router(public_invoices_router)
-app.include_router(statements_router)
-app.include_router(transactions_router)
-app.include_router(reconciliation_router)
-app.include_router(allocations_router)
+    app.include_router(allocations_router, prefix=API_V1_PREFIX)
 """
 
 from fastapi import FastAPI
@@ -39,18 +31,26 @@ app.add_middleware(
 )
 
 
-app.include_router(auth_router)
-app.include_router(customers_router)
-app.include_router(invoices_router)
-app.include_router(public_invoices_router)
-app.include_router(statements_router)
-app.include_router(transactions_router)
-app.include_router(reconciliation_router)
-app.include_router(allocations_router)
-app.include_router(paystack_router)
+# Every feature route lives under /api/v1 (DECISIONS D-36). The version is added here, in one place:
+# each router only knows its own path (e.g. "/invoices"). A breaking change later would get a v2
+# router mounted next to this one, so old clients and the Paystack webhook URL keep working.
+API_V1_PREFIX = "/api/v1"
+
+app.include_router(auth_router, prefix=API_V1_PREFIX)
+app.include_router(customers_router, prefix=API_V1_PREFIX)
+app.include_router(invoices_router, prefix=API_V1_PREFIX)
+app.include_router(public_invoices_router, prefix=API_V1_PREFIX)
+app.include_router(statements_router, prefix=API_V1_PREFIX)
+app.include_router(transactions_router, prefix=API_V1_PREFIX)
+app.include_router(reconciliation_router, prefix=API_V1_PREFIX)
+app.include_router(allocations_router, prefix=API_V1_PREFIX)
+app.include_router(paystack_router, prefix=API_V1_PREFIX)
 
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
-    """Used by docker compose and Render to check the API is up."""
+    """Used by docker compose and Render to check the API is up.
+
+    Deliberately not versioned: it is a probe for the hosting platform, not part of the API contract (D-36).
+    """
     return {"status": "ok"}

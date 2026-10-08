@@ -9,7 +9,7 @@ KOLA = {"name": "Kola & Sons", "email": "accounts@kolasons.ng", "phone": "080312
 
 
 def create_customer(client: TestClient, headers: dict, **overrides) -> dict:
-    response = client.post("/api/customers", json={**KOLA, **overrides}, headers=headers)
+    response = client.post("/api/v1/customers", json={**KOLA, **overrides}, headers=headers)
     assert response.status_code == 201, response.text
     return response.json()
 
@@ -23,7 +23,7 @@ def test_create_customer(client: TestClient, auth_headers: dict) -> None:
 
 
 def test_create_customer_only_name_is_required(client: TestClient, auth_headers: dict) -> None:
-    response = client.post("/api/customers", json={"name": "Tunde Print"}, headers=auth_headers)
+    response = client.post("/api/v1/customers", json={"name": "Tunde Print"}, headers=auth_headers)
 
     assert response.status_code == 201
     assert response.json()["aliases"] == []
@@ -37,22 +37,22 @@ def test_create_customer_trims_and_drops_blank_aliases(client: TestClient, auth_
 
 
 def test_create_customer_rejects_blank_name(client: TestClient, auth_headers: dict) -> None:
-    response = client.post("/api/customers", json={"name": "  "}, headers=auth_headers)
+    response = client.post("/api/v1/customers", json={"name": "  "}, headers=auth_headers)
 
     assert response.status_code == 422
 
 
 def test_customers_need_login(client: TestClient) -> None:
-    assert client.get("/api/customers").status_code == 401
+    assert client.get("/api/v1/customers").status_code == 401
 
 
 def test_list_and_search_by_name_or_alias(client: TestClient, auth_headers: dict) -> None:
     create_customer(client, auth_headers)
     create_customer(client, auth_headers, name="Tunde Print", email=None, aliases=["T. ADEBAYO"])
 
-    everyone = client.get("/api/customers", headers=auth_headers).json()
-    by_name = client.get("/api/customers", params={"q": "tunde"}, headers=auth_headers).json()
-    by_alias = client.get("/api/customers", params={"q": "adebayo"}, headers=auth_headers).json()
+    everyone = client.get("/api/v1/customers", headers=auth_headers).json()
+    by_name = client.get("/api/v1/customers", params={"q": "tunde"}, headers=auth_headers).json()
+    by_alias = client.get("/api/v1/customers", params={"q": "adebayo"}, headers=auth_headers).json()
 
     assert everyone["total"] == 2
     assert [c["name"] for c in everyone["items"]] == ["Kola & Sons", "Tunde Print"]  # alphabetical
@@ -64,7 +64,7 @@ def test_update_customer_writes_audit_event(client: TestClient, auth_headers: di
     customer = create_customer(client, auth_headers)
 
     response = client.patch(
-        f"/api/customers/{customer['id']}", json={"aliases": ["KOLA AND SONS", "K&S"]}, headers=auth_headers
+        f"/api/v1/customers/{customer['id']}", json={"aliases": ["KOLA AND SONS", "K&S"]}, headers=auth_headers
     )
 
     assert response.status_code == 200
@@ -82,13 +82,13 @@ def test_update_customer_writes_audit_event(client: TestClient, auth_headers: di
 def test_get_customer_includes_their_invoices(client: TestClient, auth_headers: dict) -> None:
     customer = create_customer(client, auth_headers)
     client.post(
-        "/api/invoices",
+        "/api/v1/invoices",
         json={"customer_id": customer["id"], "description": "Oct supplies", "subtotal_kobo": 9_000_000,
               "issue_date": "2026-10-01", "due_date": "2026-10-15"},
         headers=auth_headers,
     )
 
-    body = client.get(f"/api/customers/{customer['id']}", headers=auth_headers).json()
+    body = client.get(f"/api/v1/customers/{customer['id']}", headers=auth_headers).json()
 
     assert body["name"] == "Kola & Sons"
     assert [i["description"] for i in body["invoices"]] == ["Oct supplies"]
@@ -100,12 +100,12 @@ def test_get_customer_includes_their_invoices(client: TestClient, auth_headers: 
 def test_other_workspace_cannot_list_customers(client: TestClient, auth_headers: dict, other_auth_headers: dict) -> None:
     create_customer(client, auth_headers)
 
-    assert client.get("/api/customers", headers=other_auth_headers).json() == {"items": [], "total": 0}
+    assert client.get("/api/v1/customers", headers=other_auth_headers).json() == {"items": [], "total": 0}
 
 
 def test_other_workspace_gets_404_for_customer(client: TestClient, auth_headers: dict, other_auth_headers: dict) -> None:
     customer = create_customer(client, auth_headers)
-    url = f"/api/customers/{customer['id']}"
+    url = f"/api/v1/customers/{customer['id']}"
 
     # 404, not 403: don't even confirm the id exists.
     assert client.get(url, headers=other_auth_headers).status_code == 404
@@ -114,6 +114,6 @@ def test_other_workspace_gets_404_for_customer(client: TestClient, auth_headers:
 
 
 def test_unknown_customer_is_404(client: TestClient, auth_headers: dict) -> None:
-    response = client.get("/api/customers/00000000-0000-0000-0000-000000000000", headers=auth_headers)
+    response = client.get("/api/v1/customers/00000000-0000-0000-0000-000000000000", headers=auth_headers)
 
     assert response.status_code == 404

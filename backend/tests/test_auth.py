@@ -1,7 +1,7 @@
 """Feature 1 — auth + workspace.
 
 Register creates a workspace and its owner in one DB transaction; login returns a JWT;
-/api/auth/me needs a valid token. Every later feature scopes queries by the workspace
+/api/v1/auth/me needs a valid token. Every later feature scopes queries by the workspace
 that comes from this token (invariant 8), so these tests guard the front door.
 """
 
@@ -19,7 +19,7 @@ REGISTER = {"email": "ada@adaezefoods.ng", "password": "correct-horse-1", "works
 
 
 def register(client: TestClient, **overrides) -> dict:
-    response = client.post("/api/auth/register", json={**REGISTER, **overrides})
+    response = client.post("/api/v1/auth/register", json={**REGISTER, **overrides})
     assert response.status_code == 201, response.text
     return response.json()
 
@@ -65,7 +65,7 @@ def test_duplicate_email_is_rejected_and_creates_no_extra_workspace(
 ) -> None:
     register(client)
 
-    response = client.post("/api/auth/register", json={**REGISTER, "email": "ADA@adaezefoods.ng"})
+    response = client.post("/api/v1/auth/register", json={**REGISTER, "email": "ADA@adaezefoods.ng"})
 
     assert response.status_code == 409
     assert response.json()["detail"] == "An account with this email already exists"
@@ -74,19 +74,19 @@ def test_duplicate_email_is_rejected_and_creates_no_extra_workspace(
 
 
 def test_register_rejects_short_password(client: TestClient) -> None:
-    response = client.post("/api/auth/register", json={**REGISTER, "password": "short"})
+    response = client.post("/api/v1/auth/register", json={**REGISTER, "password": "short"})
 
     assert response.status_code == 422
 
 
 def test_register_rejects_invalid_email(client: TestClient) -> None:
-    response = client.post("/api/auth/register", json={**REGISTER, "email": "not-an-email"})
+    response = client.post("/api/v1/auth/register", json={**REGISTER, "email": "not-an-email"})
 
     assert response.status_code == 422
 
 
 def test_register_rejects_blank_workspace_name(client: TestClient) -> None:
-    response = client.post("/api/auth/register", json={**REGISTER, "workspace_name": "   "})
+    response = client.post("/api/v1/auth/register", json={**REGISTER, "workspace_name": "   "})
 
     assert response.status_code == 422
 
@@ -97,7 +97,7 @@ def test_register_rejects_blank_workspace_name(client: TestClient) -> None:
 def test_login_with_correct_password_returns_token(client: TestClient) -> None:
     register(client)
 
-    response = client.post("/api/auth/login", json={"email": "ADA@adaezefoods.ng", "password": REGISTER["password"]})
+    response = client.post("/api/v1/auth/login", json={"email": "ADA@adaezefoods.ng", "password": REGISTER["password"]})
 
     assert response.status_code == 200
     assert response.json()["access_token"]
@@ -107,8 +107,8 @@ def test_login_wrong_password_and_unknown_email_give_the_same_error(client: Test
     # Same status and message for both, so the login form can't be used to find out who has an account.
     register(client)
 
-    wrong_password = client.post("/api/auth/login", json={"email": REGISTER["email"], "password": "wrong-password"})
-    unknown_email = client.post("/api/auth/login", json={"email": "nobody@example.com", "password": "wrong-password"})
+    wrong_password = client.post("/api/v1/auth/login", json={"email": REGISTER["email"], "password": "wrong-password"})
+    unknown_email = client.post("/api/v1/auth/login", json={"email": "nobody@example.com", "password": "wrong-password"})
 
     assert wrong_password.status_code == unknown_email.status_code == 401
     assert wrong_password.json() == unknown_email.json() == {"detail": "Incorrect email or password"}
@@ -120,7 +120,7 @@ def test_login_wrong_password_and_unknown_email_give_the_same_error(client: Test
 def test_me_returns_user_and_their_workspace(client: TestClient) -> None:
     token = register(client)["access_token"]
 
-    response = client.get("/api/auth/me", headers=auth_header(token))
+    response = client.get("/api/v1/auth/me", headers=auth_header(token))
 
     assert response.status_code == 200
     body = response.json()
@@ -134,30 +134,30 @@ def test_two_registrations_get_separate_workspaces(client: TestClient) -> None:
     second = register(client, email="kola@kolasons.ng", workspace_name="Kola & Sons")
 
     assert first["user"]["workspace_id"] != second["user"]["workspace_id"]
-    me = client.get("/api/auth/me", headers=auth_header(second["access_token"])).json()
+    me = client.get("/api/v1/auth/me", headers=auth_header(second["access_token"])).json()
     assert me["workspace"]["name"] == "Kola & Sons"
 
 
 def test_me_without_token_is_401(client: TestClient) -> None:
-    assert client.get("/api/auth/me").status_code == 401
+    assert client.get("/api/v1/auth/me").status_code == 401
 
 
 def test_me_with_garbage_token_is_401(client: TestClient) -> None:
-    assert client.get("/api/auth/me", headers=auth_header("not-a-jwt")).status_code == 401
+    assert client.get("/api/v1/auth/me", headers=auth_header("not-a-jwt")).status_code == 401
 
 
 def test_me_with_token_signed_by_another_secret_is_401(client: TestClient) -> None:
     user_id = register(client)["user"]["id"]
     forged = jwt.encode({"sub": user_id}, "some-other-secret-that-is-at-least-32-bytes", algorithm="HS256")
 
-    assert client.get("/api/auth/me", headers=auth_header(forged)).status_code == 401
+    assert client.get("/api/v1/auth/me", headers=auth_header(forged)).status_code == 401
 
 
 def test_me_with_expired_token_is_401(client: TestClient) -> None:
     user_id = register(client)["user"]["id"]
     expired = create_access_token(user_id, expires_in=timedelta(seconds=-1))
 
-    assert client.get("/api/auth/me", headers=auth_header(expired)).status_code == 401
+    assert client.get("/api/v1/auth/me", headers=auth_header(expired)).status_code == 401
 
 
 def test_me_with_token_for_deleted_user_is_401(client: TestClient, session: Session) -> None:
@@ -165,7 +165,7 @@ def test_me_with_token_for_deleted_user_is_401(client: TestClient, session: Sess
     session.delete(session.get(User, body["user"]["id"]))
     session.flush()
 
-    assert client.get("/api/auth/me", headers=auth_header(body["access_token"])).status_code == 401
+    assert client.get("/api/v1/auth/me", headers=auth_header(body["access_token"])).status_code == 401
 
 
 def test_token_does_not_carry_workspace_id(client: TestClient) -> None:

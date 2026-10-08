@@ -450,7 +450,7 @@ def test_reimporting_a_statement_adds_nothing(client, auth_headers: dict, sessio
 
     def import_statement() -> dict:
         response = client.post(
-            "/api/statements/import", files={"file": ("bank_a.csv", statement, "text/csv")}, headers=auth_headers
+            "/api/v1/statements/import", files={"file": ("bank_a.csv", statement, "text/csv")}, headers=auth_headers
         )
         assert response.status_code == 200, response.text
         return response.json()
@@ -547,7 +547,7 @@ def test_webhook_insert_and_allocation_share_one_db_transaction(committed: Engin
     try:
         with TestClient(app, raise_server_exceptions=False) as test_client:
             response = test_client.post(
-                "/api/webhooks/paystack", content=body,
+                "/api/v1/webhooks/paystack", content=body,
                 headers={"Content-Type": "application/json", "x-paystack-signature": signature},
             )
     finally:

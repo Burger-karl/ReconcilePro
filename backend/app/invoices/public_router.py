@@ -1,4 +1,4 @@
-"""/api/public/invoices/{token}: the customer's view of an invoice. No login.
+"""/api/v1/public/invoices/{token}: the customer's view of an invoice. No login.
 
 The only key is the unguessable public token, created when the invoice is sent.
 """
@@ -12,7 +12,7 @@ from app.paystack import service as paystack
 from app.paystack.client import PaystackUnavailable
 from app.paystack.schemas import PaymentLink
 
-router = APIRouter(prefix="/api/public/invoices", tags=["Public"])
+router = APIRouter(prefix="/public/invoices", tags=["Public"])
 
 
 @router.get("/{token}")

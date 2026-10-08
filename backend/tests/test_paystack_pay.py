@@ -1,4 +1,4 @@
-"""Feature 6 — POST /api/public/invoices/{token}/pay: start a Paystack payment for what is still owed.
+"""Feature 6 — POST /api/v1/public/invoices/{token}/pay: start a Paystack payment for what is still owed.
 
 Paystack is never called for real: `initialize` swaps client.initialize_transaction for a fake that
 records what it was asked and returns a checkout URL.
@@ -53,7 +53,7 @@ def owner(session: Session) -> User:
 
 
 def pay(client: TestClient, token: str):
-    return client.post(f"/api/public/invoices/{token}/pay")
+    return client.post(f"/api/v1/public/invoices/{token}/pay")
 
 
 def test_pay_returns_paystack_checkout_url(client: TestClient, session: Session, owner: User,

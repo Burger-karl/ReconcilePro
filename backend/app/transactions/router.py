@@ -1,4 +1,4 @@
-"""/api/transactions routes (read only)."""
+"""/api/v1/transactions routes (read only)."""
 
 import uuid
 from datetime import date
@@ -10,7 +10,7 @@ from app.core.deps import CurrentUser, SessionDep
 from app.transactions import service
 from app.transactions.schemas import AllocationState, TransactionDetail, TransactionList
 
-router = APIRouter(prefix="/api/transactions", tags=["Transactions"])
+router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
 
 @router.get("")

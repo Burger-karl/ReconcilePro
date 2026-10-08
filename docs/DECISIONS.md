@@ -108,7 +108,7 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 - **Rejected:** a Postgres sequence — one global sequence would leave gaps and not restart per workspace.
 
 ## D-15 — Status filters run after the status is derived
-- **Decision:** `GET /api/invoices?status=overdue` loads the workspace's invoices, derives each status in Python, then filters.
+- **Decision:** `GET /api/v1/invoices?status=overdue` loads the workspace's invoices, derives each status in Python, then filters.
 - **Why:** paid/part_paid/overdue are not columns (D-05), so they can't be a SQL WHERE without copying the rules into SQL.
   One definition of status is worth more than speed at SME volumes (hundreds to a few thousand invoices).
 - **Revisit if:** a workspace has tens of thousands of invoices.
@@ -188,7 +188,7 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 
 ## D-27 — Auto-matching runs inside the statement import's transaction
 - **Decision:** after inserting new credits, the import calls `reconciliation.auto_match()` for just those lines, then
-  commits once. `POST /api/reconciliation/auto-match` re-runs it over every unallocated credit.
+  commits once. `POST /api/v1/reconciliation/auto-match` re-runs it over every unallocated credit.
 - **Why:** an import either lands with its automatic allocations or not at all. The re-run covers money that arrived
   quoting a reference before its invoice was sent (drafts are never candidates). The system is the actor
   (`created_by` = null, method `auto`), so the audit trail shows a person didn't do it.
@@ -229,7 +229,7 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
   which changes the design (e.g. a per-workspace webhook URL).
 
 ## D-34 — Online payment needs the customer's email, and asks only for what is outstanding
-- **Decision:** `POST /api/public/invoices/{token}/pay` initialises Paystack for the invoice's current outstanding
+- **Decision:** `POST /api/v1/public/invoices/{token}/pay` initialises Paystack for the invoice's current outstanding
   amount, with the customer's stored email and `metadata.invoice_id`. No email, or nothing owed (paid / void) → 409.
 - **Why:** Paystack's initialise requires an email. Asking only for the outstanding amount means a card payment can't
   overpay unless a bank transfer lands between opening and finishing checkout; D-31 sends that rare case to the queue.
@@ -242,3 +242,14 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 - **Why:** a 200 makes Paystack stop retrying. A rate limit or rotated key says nothing about the payment, so
   answering 200 would lose a real card payment for good: it would surface only inside a settlement line, and those
   are never matched (invariant 6). Retries are harmless (invariant 3).
+
+## D-36 — Feature routes are versioned under /api/v1
+- **Decision:** every feature router is mounted under `/api/v1` in `app/main.py` (one constant, `API_V1_PREFIX`).
+  Routers only declare their own path (`/invoices`, `/webhooks`). `GET /api/health` stays unversioned.
+- **Why:** the Paystack webhook URL and the public invoice link are given to outside parties and can't be changed
+  for them overnight. If a response shape ever has to break, a `/api/v2` router can run beside v1 while old callers
+  move over. Adding the prefix now, before any frontend screen calls the API, costs nothing.
+- **Health stays unversioned:** it is a probe for docker compose and Render, not part of the API contract.
+- **Rejected:** version in a header (`Accept: application/vnd.reconcile.v1+json`) — invisible in logs and in the
+  browser, and Paystack can't send custom headers to a webhook. No version at all — fine while the frontend is the
+  only client, but changing the webhook URL later means a Paystack dashboard change during live payments.

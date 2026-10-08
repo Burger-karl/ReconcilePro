@@ -1,4 +1,4 @@
-"""Request and response bodies for /api/auth. Table models are never returned directly,
+"""Request and response bodies for /api/v1/auth. Table models are never returned directly,
 so password_hash can never leak into a response."""
 
 import uuid

@@ -1,4 +1,4 @@
-"""/api/reconciliation routes: the exception queue and what the accountant does with it."""
+"""/api/v1/reconciliation routes: the exception queue and what the accountant does with it."""
 
 from fastapi import APIRouter, HTTPException, Response, status
 
@@ -9,7 +9,7 @@ from app.core.deps import CurrentUser, SessionDep
 from app.reconciliation import service
 from app.reconciliation.schemas import AllocateRequest, AutoMatchResult, Queue, RejectRequest
 
-router = APIRouter(prefix="/api/reconciliation", tags=["Reconciliation"])
+router = APIRouter(prefix="/reconciliation", tags=["Reconciliation"])
 
 
 @router.get("/queue")
