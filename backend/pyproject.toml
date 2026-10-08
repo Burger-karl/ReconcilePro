@@ -1,0 +1,43 @@
+# Single source of truth for the backend's dependencies (replaces requirements.txt).
+# Versions are pinned so the API, CI and Render all run the same code.
+[project]
+name = "reconcile-api"
+version = "0.1.0"
+description = "Reconcile backend: matches bank credits and Paystack payments to invoices."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.142.2",
+    "uvicorn[standard]==0.54.0",
+    "sqlmodel==0.0.47",
+    "sqlalchemy==2.0.54",
+    "psycopg[binary]==3.3.6",
+    "alembic==1.20.0",
+    "pydantic-settings==2.15.0",
+    "pydantic==2.13.5",
+    # Needed by FastAPI to receive file uploads (statement import)
+    "python-multipart==0.0.32",
+    "email-validator==2.3.0",
+    # Auth: JWT login tokens, argon2 password hashing
+    "pyjwt==2.15.1",
+    "pwdlib[argon2]==0.3.1",
+    # Matching: fuzzy comparison of payer names with customer names
+    "rapidfuzz==3.14.6",
+]
+
+[project.optional-dependencies]
+# Tests. Install with: pip install ".[dev]"
+dev = [
+    "pytest==9.1.1",
+    "httpx==0.28.1",
+]
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# We install this project only for its dependencies. The app runs from the
+# source folder (uvicorn app.main:app), so no package is copied into site-packages.
+# This also lets the Dockerfile install deps from pyproject.toml alone, before
+# the code is copied, so Docker caches that layer until a dependency changes.
+packages = []
