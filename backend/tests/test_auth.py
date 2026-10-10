@@ -5,9 +5,11 @@ Register creates a workspace and its owner in one DB transaction; login returns 
 that comes from this token (invariant 8), so these tests guard the front door.
 """
 
+import time
 from datetime import timedelta
 
 import jwt
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, func, select
 
@@ -155,7 +157,7 @@ def test_me_with_token_signed_by_another_secret_is_401(client: TestClient) -> No
 
 def test_me_with_expired_token_is_401(client: TestClient) -> None:
     user_id = register(client)["user"]["id"]
-    expired = create_access_token(user_id, expires_in=timedelta(seconds=-1))
+    expired = create_access_token(user_id, token_version=0, expires_in=timedelta(seconds=-1))
 
     assert client.get("/api/v1/auth/me", headers=auth_header(expired)).status_code == 401
 
@@ -175,4 +177,16 @@ def test_token_does_not_carry_workspace_id(client: TestClient) -> None:
 
     claims = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
 
-    assert set(claims) == {"sub", "exp"}
+    # "ver" is the user's token_version: a password reset bumps it, which logs out old tokens (D-41).
+    assert set(claims) == {"sub", "exp", "ver"}
+
+
+@pytest.mark.parametrize("ver", [None, 1, "0", True])
+def test_token_with_missing_or_wrong_version_is_401(client: TestClient, ver) -> None:
+    user_id = register(client)["user"]["id"]
+    claims = {"sub": user_id, "exp": int(time.time()) + 600}
+    if ver is not None:
+        claims["ver"] = ver
+    token = jwt.encode(claims, settings.jwt_secret, algorithm="HS256")
+
+    assert client.get("/api/v1/auth/me", headers=auth_header(token)).status_code == 401

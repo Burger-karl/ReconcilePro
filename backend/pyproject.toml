@@ -18,17 +18,20 @@ dependencies = [
     "python-multipart==0.0.32",
     "email-validator==2.3.0",
     # Auth: JWT login tokens, argon2 password hashing
-    "pyjwt==2.15.1",
+    # [crypto] adds RS256, which Google uses to sign its ID tokens (Google sign-in, D-37)
+    "pyjwt[crypto]==2.15.1",
+    "cryptography==50.0.2",
     "pwdlib[argon2]==0.3.1",
     # Matching: fuzzy comparison of payer names with customer names
     "rapidfuzz==3.14.6",
+    # HTTP client for Paystack and Resend (runtime, not only tests)
+    "httpx==0.28.1",
 ]
 
 [project.optional-dependencies]
 # Tests. Install with: pip install ".[dev]"
 dev = [
     "pytest==9.1.1",
-    "httpx==0.28.1",
 ]
 
 [build-system]

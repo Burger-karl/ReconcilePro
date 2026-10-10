@@ -35,12 +35,16 @@ def get_current_user(
 ) -> User:
     if credentials is None:
         raise NOT_AUTHENTICATED
-    user_id = read_access_token(credentials.credentials)
-    if user_id is None:
+    claims = read_access_token(credentials.credentials)
+    if claims is None:
         raise NOT_AUTHENTICATED
+    user_id, token_version = claims
     # The token can outlive the user (deleted account), so the user must still exist.
     user = session.get(User, user_id)
     if user is None:
+        raise NOT_AUTHENTICATED
+    # A password reset bumps user.token_version, so tokens issued before it are refused here (D-41).
+    if token_version != user.token_version:
         raise NOT_AUTHENTICATED
     return user
 

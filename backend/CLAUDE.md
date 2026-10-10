@@ -5,9 +5,10 @@ models.py (SQLModel tables), schemas.py (request/response models — never retur
 service.py (logic), router.py (thin FastAPI routes).
 - app/main.py: creates the app and includes every feature's router
 - app/core: shared plumbing, not a feature — config (pydantic-settings), security (JWT, password hashing),
-  db (engine, session), deps (current_user, require_owner)
+  db (engine, session), deps (current_user, require_owner), limits (request size, failed logins)
 - app/db_models.py: imports every feature's models.py so Alembic and scripts/erd.py see all tables
-- app/auth: Workspace + User models, register/login/me
+- app/auth: Workspace, User, PasswordResetToken models; register/login/me, Google sign-in (google.py), forgot/reset password
+- app/email: send_email() via Resend (logs instead of sending when RESEND_API_KEY is empty)
 - app/customers: Customer model, CRUD
 - app/invoices: Invoice model, VAT + derived status in service.py, router.py, public_router.py (/api/v1/public/invoices/{token})
 - app/transactions: Transaction model, list/detail
@@ -31,3 +32,4 @@ Rules:
   then confirm with Paystack's verify-transaction endpoint, then respond 200 quickly.
 - Concurrency tests use two separate sessions against real Postgres (SQLite has no SELECT ... FOR UPDATE).
 - Tests run against a Postgres test database from docker compose; each test inside a rolled-back transaction.
+- ENVIRONMENT defaults to production (strict). Local runs outside docker compose need ENVIRONMENT=development in backend/.env (D-43).

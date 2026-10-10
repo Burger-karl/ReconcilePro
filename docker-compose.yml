@@ -25,6 +25,8 @@ services:
       - path: ./backend/.env
         required: false
     environment:
+      # Local only: allows the development JWT secret and logs emails instead of sending them (D-43).
+      ENVIRONMENT: development
       # Inside the compose network the database host is "db", not localhost.
       DATABASE_URL: postgresql+psycopg://reconcile:reconcile@db:5432/reconcile
       TEST_DATABASE_URL: postgresql+psycopg://reconcile:reconcile@db:5432/reconcile_test

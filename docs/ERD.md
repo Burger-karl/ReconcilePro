@@ -13,6 +13,7 @@ erDiagram
     workspaces ||--o{ transactions : owns
     workspaces ||--o{ payment_allocations : owns
     workspaces ||--o{ audit_events : owns
+    workspaces ||--o{ password_reset_tokens : owns
 
     customers ||--o{ invoices : "is billed on"
     invoices ||--o{ payment_allocations : "is paid by"
@@ -20,6 +21,7 @@ erDiagram
 
     users |o--o{ payment_allocations : "created / reversed"
     users |o--o{ audit_events : "acted"
+    users ||--o{ password_reset_tokens : "asked to reset"
 
     workspaces {
         uuid id PK
@@ -31,8 +33,20 @@ erDiagram
         uuid id PK
         uuid workspace_id FK
         text email UK
-        text password_hash
+        text password_hash "null for Google-only users"
+        text google_sub UK "Google's permanent user id"
+        int token_version "in every login token; reset bumps it"
         text role "owner | member"
+        timestamptz created_at
+    }
+
+    password_reset_tokens {
+        uuid id PK
+        uuid workspace_id FK
+        uuid user_id FK
+        text token_hash UK "sha256 of the emailed token"
+        timestamptz expires_at
+        timestamptz used_at
         timestamptz created_at
     }
 
@@ -111,6 +125,9 @@ erDiagram
 | Table | Constraint / index | Why (invariant) |
 |-------|--------------------|-----------------|
 | users | `UNIQUE (email)` | one login per email |
+| users | `UNIQUE (google_sub)` | one Reconcile user per Google account (D-38) |
+| users | `CHECK (password_hash IS NOT NULL OR google_sub IS NOT NULL)` | every user keeps a way to sign in |
+| password_reset_tokens | `UNIQUE (token_hash)` | a reset link finds exactly one row (D-39) |
 | invoices | `UNIQUE (workspace_id, number)` | invoice numbers restart per workspace |
 | invoices | `UNIQUE (workspace_id, reference)` | exact-reference matching must find one invoice |
 | invoices | `UNIQUE (public_token)` | public link must be unguessable and unique |
