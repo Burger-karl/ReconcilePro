@@ -1,4 +1,4 @@
-"""/api/statements routes."""
+"""/api/v1/statements routes."""
 
 from fastapi import APIRouter, HTTPException, UploadFile, status
 
@@ -7,7 +7,7 @@ from app.statements import service
 from app.statements.parsers.base import StatementError
 from app.statements.schemas import ImportResult
 
-router = APIRouter(prefix="/api/statements", tags=["Statements"])
+router = APIRouter(prefix="/statements", tags=["Statements"])
 
 
 @router.post("/import")

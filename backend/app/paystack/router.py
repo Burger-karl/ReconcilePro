@@ -1,4 +1,4 @@
-"""POST /api/webhooks/paystack — public; Paystack calls it after a customer pays (see service.py)."""
+"""POST /api/v1/webhooks/paystack — public; Paystack calls it after a customer pays (see service.py)."""
 
 import json
 from typing import Annotated
@@ -12,7 +12,7 @@ from app.paystack import service
 from app.paystack.client import PaystackUnavailable
 from app.paystack.schemas import WebhookResult
 
-router = APIRouter(prefix="/api/webhooks", tags=["Webhooks"])
+router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 
 
 @router.post("/paystack")

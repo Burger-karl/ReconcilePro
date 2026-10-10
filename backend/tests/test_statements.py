@@ -18,7 +18,7 @@ FIXTURES = Path(__file__).parent / "fixtures" / "statements"
 
 def upload(client: TestClient, headers: dict, name: str, content: bytes | None = None, content_type: str = "text/csv"):
     data = content if content is not None else (FIXTURES / name).read_bytes()
-    return client.post("/api/statements/import", files={"file": (name, data, content_type)}, headers=headers)
+    return client.post("/api/v1/statements/import", files={"file": (name, data, content_type)}, headers=headers)
 
 
 def import_ok(client: TestClient, headers: dict, name: str) -> dict:
@@ -165,7 +165,7 @@ def test_import_needs_login(client: TestClient) -> None:
 def test_list_transactions_with_unallocated_amounts(client: TestClient, auth_headers: dict) -> None:
     import_ok(client, auth_headers, "bank_a.csv")
 
-    body = client.get("/api/transactions", headers=auth_headers).json()
+    body = client.get("/api/v1/transactions", headers=auth_headers).json()
 
     assert body["total"] == 4
     newest = body["items"][0]  # newest value date first
@@ -177,9 +177,9 @@ def test_list_transactions_with_unallocated_amounts(client: TestClient, auth_hea
 def test_list_transactions_filters_by_kind_and_state(client: TestClient, auth_headers: dict) -> None:
     import_ok(client, auth_headers, "bank_a.csv")
 
-    settlements = client.get("/api/transactions", params={"kind": "settlement"}, headers=auth_headers).json()
-    unallocated = client.get("/api/transactions", params={"state": "unallocated"}, headers=auth_headers).json()
-    allocated = client.get("/api/transactions", params={"state": "allocated"}, headers=auth_headers).json()
+    settlements = client.get("/api/v1/transactions", params={"kind": "settlement"}, headers=auth_headers).json()
+    unallocated = client.get("/api/v1/transactions", params={"state": "unallocated"}, headers=auth_headers).json()
+    allocated = client.get("/api/v1/transactions", params={"state": "allocated"}, headers=auth_headers).json()
 
     assert [t["amount_kobo"] for t in settlements["items"]] == [24_530_000]
     assert unallocated["total"] == 4
@@ -188,12 +188,12 @@ def test_list_transactions_filters_by_kind_and_state(client: TestClient, auth_he
 
 def test_transaction_detail_and_isolation(client: TestClient, auth_headers: dict, other_auth_headers: dict) -> None:
     import_ok(client, auth_headers, "bank_a.csv")
-    transaction_id = client.get("/api/transactions", headers=auth_headers).json()["items"][0]["id"]
+    transaction_id = client.get("/api/v1/transactions", headers=auth_headers).json()["items"][0]["id"]
 
-    mine = client.get(f"/api/transactions/{transaction_id}", headers=auth_headers)
-    theirs = client.get(f"/api/transactions/{transaction_id}", headers=other_auth_headers)
+    mine = client.get(f"/api/v1/transactions/{transaction_id}", headers=auth_headers)
+    theirs = client.get(f"/api/v1/transactions/{transaction_id}", headers=other_auth_headers)
 
     assert mine.status_code == 200
     assert mine.json()["allocations"] == []
     assert theirs.status_code == 404
-    assert client.get("/api/transactions", headers=other_auth_headers).json()["total"] == 0
+    assert client.get("/api/v1/transactions", headers=other_auth_headers).json()["total"] == 0

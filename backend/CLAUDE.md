@@ -9,7 +9,7 @@ service.py (logic), router.py (thin FastAPI routes).
 - app/db_models.py: imports every feature's models.py so Alembic and scripts/erd.py see all tables
 - app/auth: Workspace + User models, register/login/me
 - app/customers: Customer model, CRUD
-- app/invoices: Invoice model, VAT + derived status in service.py, router.py, public_router.py (/api/public/invoices/{token})
+- app/invoices: Invoice model, VAT + derived status in service.py, router.py, public_router.py (/api/v1/public/invoices/{token})
 - app/transactions: Transaction model, list/detail
 - app/statements: import service (fingerprint, ON CONFLICT DO NOTHING), router.py,
   parsers/ — base (NormalizedLine dataclass), detect (pick parser from header row), bank_a, bank_b

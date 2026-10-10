@@ -1,4 +1,4 @@
-"""Feature 6 — POST /api/webhooks/paystack (docs/API.md, DECISIONS D-30 to D-33).
+"""Feature 6 — POST /api/v1/webhooks/paystack (docs/API.md, DECISIONS D-30 to D-33).
 
 Paystack is never called for real: `paystack_api` swaps client.verify_transaction for a fake that
 returns whatever the test put in `verified`. The webhook body and the verified data are kept
@@ -31,7 +31,7 @@ from tests.conftest import register_headers
 from tests.factories import make_invoice, make_owner
 
 TEST_SECRET = "sk_test_reconcile_webhook_secret"
-URL = "/api/webhooks/paystack"
+URL = "/api/v1/webhooks/paystack"
 INVOICE_TOTAL = 10_750_000  # make_invoice default
 
 
@@ -334,7 +334,7 @@ def test_more_than_outstanding_lands_unallocated_in_queue(client: TestClient, se
     assert transaction.amount_kobo == too_much
     assert count(session, PaymentAllocation) == 0
 
-    queue = client.get("/api/reconciliation/queue", headers=headers).json()["items"]
+    queue = client.get("/api/v1/reconciliation/queue", headers=headers).json()["items"]
     assert [item["transaction"]["id"] for item in queue] == [str(transaction.id)]
 
 
@@ -376,8 +376,8 @@ def test_transaction_belongs_to_the_invoices_workspace(client: TestClient, sessi
 
     post(client, event_body("ref-1", invoice.id))
 
-    assert client.get("/api/transactions", headers=ada).json()["total"] == 1
-    assert client.get("/api/transactions", headers=kola).json()["total"] == 0
+    assert client.get("/api/v1/transactions", headers=ada).json()["total"] == 1
+    assert client.get("/api/v1/transactions", headers=kola).json()["total"] == 0
 
 
 # --- invariant 3 holds on every unique index -----------------------------------------------------------------

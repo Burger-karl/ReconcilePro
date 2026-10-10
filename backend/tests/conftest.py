@@ -59,7 +59,7 @@ def client(session: Session) -> Iterator[TestClient]:
 
 def register_headers(client: TestClient, email: str, workspace_name: str) -> dict[str, str]:
     response = client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={"email": email, "password": "correct-horse-1", "workspace_name": workspace_name},
     )
     assert response.status_code == 201, response.text

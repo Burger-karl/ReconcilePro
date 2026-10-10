@@ -1,4 +1,4 @@
-"""Request and response bodies for /api/customers."""
+"""Request and response bodies for /api/v1/customers."""
 
 import uuid
 from datetime import datetime

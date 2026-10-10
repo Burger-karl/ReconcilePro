@@ -1,4 +1,4 @@
-"""Request and response bodies for /api/invoices and the public invoice page.
+"""Request and response bodies for /api/v1/invoices and the public invoice page.
 
 Money fields are StrictInt kobo: 1500.5 or "90000" is rejected with 422 instead of being
 silently converted (invariant 1). VAT and total are never accepted from the client.

@@ -1,4 +1,4 @@
-"""/api/auth routes. Thin: validate (schemas), call the service, shape the response."""
+"""/api/v1/auth routes. Thin: validate (schemas), call the service, shape the response."""
 
 from fastapi import APIRouter, HTTPException, status
 
@@ -8,7 +8,7 @@ from app.auth.schemas import LoginRequest, MeResponse, RegisterRequest, TokenRes
 from app.core.deps import CurrentUser, SessionDep
 from app.core.security import create_access_token
 
-router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 def token_response(user: User) -> TokenResponse:

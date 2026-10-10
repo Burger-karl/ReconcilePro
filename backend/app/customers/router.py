@@ -1,4 +1,4 @@
-"""/api/customers routes. Thin: validate, call the service, map errors to HTTP."""
+"""/api/v1/customers routes. Thin: validate, call the service, map errors to HTTP."""
 
 import uuid
 from typing import Annotated
@@ -9,7 +9,7 @@ from app.core.deps import CurrentUser, SessionDep
 from app.customers import service
 from app.customers.schemas import CustomerCreate, CustomerDetail, CustomerList, CustomerRead, CustomerUpdate
 
-router = APIRouter(prefix="/api/customers", tags=["Customers"])
+router = APIRouter(prefix="/customers", tags=["Customers"])
 
 NOT_FOUND = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
 
