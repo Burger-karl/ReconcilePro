@@ -131,6 +131,44 @@ def test_one_bad_row_rejects_the_whole_file(client: TestClient, auth_headers: di
     assert count_transactions(session) == 0  # all or nothing
 
 
+BANK_A_HEADER = "Trans. Date,Value Date,Reference,Debits,Credits,Balance,Remarks\n"
+
+
+def test_reference_too_long_is_400_not_500(client: TestClient, auth_headers: dict, session: Session) -> None:
+    # Found by the security review: a 150-character reference crashed the insert (VARCHAR(100)) with a 500.
+    content = BANK_A_HEADER + f'01-Oct-2026,01-Oct-2026,{"R" * 150},,"100.00","100.00",TRF FROM X\n'
+
+    response = upload(client, auth_headers, "long.csv", content.encode())
+
+    assert response.status_code == 400
+    assert "Line 2" in response.json()["detail"]
+    assert count_transactions(session) == 0
+
+
+def test_large_statement_is_inserted_in_batches(client: TestClient, auth_headers: dict, session: Session) -> None:
+    # Found by the security review: one INSERT for every row hit PostgreSQL's limit of 65,535 parameters
+    # (13 per row, so ~5,000 rows) and crashed with a 500.
+    lines = "".join(
+        f'01-Oct-2026,01-Oct-2026,FT{i:07d},,"1.00","{i}.00",TRF FROM PAYER {i}\n' for i in range(5_100)
+    )
+
+    response = upload(client, auth_headers, "big.csv", (BANK_A_HEADER + lines).encode())
+
+    assert response.status_code == 200, response.text
+    assert response.json()["added"] == 5_100
+    assert count_transactions(session) == 5_100
+
+
+def test_too_many_lines_is_400(client: TestClient, auth_headers: dict, session: Session) -> None:
+    lines = "".join(f'01-Oct-2026,01-Oct-2026,FT{i:07d},,"1.00","{i}.00",X\n' for i in range(20_001))
+
+    response = upload(client, auth_headers, "huge.csv", (BANK_A_HEADER + lines).encode())
+
+    assert response.status_code == 400
+    assert "20,000" in response.json()["detail"]
+    assert count_transactions(session) == 0
+
+
 def test_empty_file_is_400(client: TestClient, auth_headers: dict) -> None:
     assert upload(client, auth_headers, "empty.csv", b"").status_code == 400
 

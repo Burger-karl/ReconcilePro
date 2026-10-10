@@ -9,7 +9,11 @@ cannot use this, because rolled-back data is invisible to the other session; the
 committing fixture when the allocation feature is built.
 """
 
+import os
 from collections.abc import Iterator
+
+# Before any app import: settings default to production, which refuses the development JWT secret (D-43).
+os.environ.setdefault("ENVIRONMENT", "development")
 
 import pytest
 from fastapi.testclient import TestClient
@@ -19,6 +23,7 @@ from sqlmodel import Session, SQLModel, create_engine
 import app.db_models  # noqa: F401  (registers every table on SQLModel.metadata)
 from app.core.config import settings
 from app.core.db import get_session
+from app.core.limits import login_attempts
 from app.main import app
 
 
@@ -52,6 +57,8 @@ def session(engine: Engine) -> Iterator[Session]:
 def client(session: Session) -> Iterator[TestClient]:
     """HTTP client for the API that uses the rolled-back test session."""
     app.dependency_overrides[get_session] = lambda: session
+    # Failed logins are counted in memory per email; start every test from zero.
+    login_attempts.reset()
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()

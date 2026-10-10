@@ -253,3 +253,97 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 - **Rejected:** version in a header (`Accept: application/vnd.reconcile.v1+json`) — invisible in logs and in the
   browser, and Paystack can't send custom headers to a webhook. No version at all — fine while the frontend is the
   only client, but changing the webhook URL later means a Paystack dashboard change during live payments.
+
+## D-37 — Google sign-in uses the ID token from Google's button, checked with PyJWT
+- **Decision:** the frontend shows Google's sign-in button and posts the ID token it gets to
+  `/api/v1/auth/google/register` or `/google/login`. `app/auth/google.py` checks it with PyJWT against Google's
+  published keys (`https://www.googleapis.com/oauth2/v3/certs`): RS256 only, `aud` = our client id, `iss` is
+  `accounts.google.com` or `https://accounts.google.com`, `exp` in the future, `email_verified` is `true`.
+  We then issue our own login token, exactly as for a password login.
+- **Why:** no redirect flow, no client secret, no OAuth `state` to store; Google has already authenticated the
+  person, so we only verify Google's signature. PyJWT is already how we read our own tokens, and tests can sign
+  tokens with their own RSA key so the real checks run.
+- **Rejected:** the server-side authorisation-code flow (more moving parts, needs a secret). Google's `google-auth`
+  library — it hides the checks, and tests would have to patch it out entirely.
+
+## D-38 — A Google sign-in finds its user by `sub`, and links by email only when Google owns the address
+- **Decision:** `users.google_sub` (unique) stores Google's permanent id. Login looks it up first. If there is no
+  match, a user who registered with a password and the same email is linked, but only when Google is
+  authoritative for that email: it ends in `@gmail.com`, or the token has `hd` (a Google Workspace domain).
+  An account already linked to a different Google account is never switched.
+- **Why:** Google's guide says to key on `sub` (emails on a Google account can change) and to trust the email only
+  where Google is authoritative. A personal Google account can carry any verified address, so linking on that
+  alone would let someone take over an existing Reconcile account.
+- **Rejected:** linking whenever `email_verified` is true; refusing all linking (forces two separate accounts).
+
+## D-39 — Forgot password: one answer for every email, single-use 30-minute link, only a hash stored
+- **Decision:** `POST /forgot-password` always answers 202 with the same body. For a known email it stores
+  `sha256(token)` in `password_reset_tokens` (32 random bytes, expires after `PASSWORD_RESET_MINUTES` = 30),
+  marks older unused links used, writes `user.password_reset_requested`, and emails the link in a background task.
+  `POST /reset-password` locks the token row (`FOR UPDATE`), refuses unknown/used/expired with one message,
+  sets the new password and marks the link used.
+- **Why:** the same answer stops attackers learning which emails have accounts; sending in the background stops
+  the response time telling them instead. Hashing means a leaked database can't reset anyone's password. SHA-256
+  is enough because the token is random; argon2 is for guessable human passwords. The lock stops two uses of one link.
+- **Rejected:** storing the raw token; long-lived links. (Limits on how often links are sent: D-42.)
+
+## D-40 — The reset token travels in the URL fragment
+- **Decision:** the link is `{FRONTEND_URL}/reset-password#token=…`. The reset page reads it with JavaScript and
+  posts it to the API.
+- **Why:** browsers never send the part after `#` to any server, so the token can't land in Vercel/Render access
+  logs or in a `Referer` header sent to another site.
+
+## D-41 — Logging out every session: `users.token_version`
+- **Decision:** login tokens carry `ver` = the user's `token_version`; `get_current_user` refuses a token whose
+  `ver` differs. A password reset adds 1.
+- **Why:** a JWT can't be deleted on the server. One integer per user logs out every old token (e.g. a thief's)
+  without storing a list of tokens.
+- **Rejected:** comparing the token's issue time with a "password changed at" timestamp — JWT times are whole
+  seconds, so a login in the same second as the reset could be refused.
+
+## D-42 — Two small limits instead of full rate limiting
+- **Decision:** (1) after 10 wrong passwords for one email within 15 minutes, `/auth/login` answers 429 for
+  that email until the window passes (`app/core/limits.py`, counted in memory). The block is checked before the
+  password, so even the right password is refused while blocked. (2) `/auth/forgot-password` sends at most 3
+  links per account per hour, counted from `password_reset_tokens`; over that it answers the usual 202 and
+  sends nothing.
+- **Why:** stops password guessing against one account and stops the endpoint being used to flood an inbox,
+  without Redis or new tables. argon2 already makes each guess slow.
+- **Known limits:** the login counter resets on restart and is per process (fine for one Render instance).
+  Someone can lock a person out for 15 minutes by guessing wrong on purpose; forgot password still works.
+  Per-IP limits (many accounts from one address) belong at the edge (Render/Cloudflare), later.
+
+## D-43 — Settings default to production, and production refuses the development JWT secret
+- **Decision:** `ENVIRONMENT` is `production` unless set to `development` (docker-compose and the tests set it).
+  In production the app refuses to start unless `JWT_SECRET` is set and at least 32 bytes.
+- **Why:** the development secret is in this public repository. A server running with it would let anyone forge
+  a login token for any user. Defaulting to production means forgetting a setting fails loudly instead of
+  silently running unsafe.
+
+## D-44 — Request bodies over 6 MB are refused before they are read
+- **Decision:** `LimitRequestSize` (plain ASGI middleware) answers 413 when `Content-Length` is too big, and
+  also counts bytes as they arrive for uploads sent without a length.
+- **Why:** FastAPI writes an upload to disk before our route can check its size, so an endless upload could fill
+  the server's disk. 6 MB covers the 5 MB statement limit plus the multipart wrapping.
+
+## D-45 — Production hides the API docs and never logs email bodies
+- **Decision:** `/docs`, `/redoc` and `/openapi.json` exist only in development. In production a missing
+  `RESEND_API_KEY` logs "not sent" without the body.
+- **Why:** the docs are a full map of the API for an attacker; frontend types are generated locally anyway.
+  An email body can hold a working password-reset link, and logs are seen by more people and tools than an inbox.
+
+## D-46 — Linking Google to a password account removes the password
+- **Decision:** when a Google sign-in links to an existing password account (D-38), the password is removed and
+  `token_version` goes up, so every session made with the password ends.
+- **Why:** "pre-account hijacking". Registering with a password never proves who owns the inbox, so an attacker
+  could register the victim's Gmail address first and wait. When the victim later signs in with Google, they
+  would land in the attacker's account while the attacker still knows its password. Google has proved who owns
+  the address; the owner can set a password again through forgot password, which goes to that inbox.
+
+## D-47 — Statement import limits: 20,000 lines, batched inserts, clear errors for long values
+- **Decision:** a statement with more than 20,000 lines is refused (400). Rows are inserted 1,000 at a time inside
+  the one transaction. A reference longer than 100 characters is a 400 naming the line; a payer name longer than
+  200 characters is cut short.
+- **Why:** found by the security review. One INSERT for ~5,000+ lines passed PostgreSQL's 65,535-parameter
+  limit, and a long reference overflowed `VARCHAR(100)`: both crashed with a 500. Batching keeps the
+  all-or-nothing rule (D-20) because the batches share one transaction.

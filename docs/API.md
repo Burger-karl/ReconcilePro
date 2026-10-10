@@ -1,6 +1,6 @@
 # API
 
-FastAPI, JSON, feature routes under `/api/v1` (D-36); `GET /api/health` stays unversioned. Interactive docs at `/docs` once the server runs; the frontend types in
+FastAPI, JSON, feature routes under `/api/v1` (D-36); `GET /api/health` stays unversioned. Any request body over 6 MB is refused with 413 (D-44). `/docs` and `/openapi.json` exist only when `ENVIRONMENT=development` (D-45). Interactive docs at `/docs` once the server runs; the frontend types in
 `frontend/types/api.ts` are generated from `/openapi.json`.
 
 Conventions:
@@ -18,8 +18,16 @@ Conventions:
 | Method | Path | Body / query | Returns | Notes |
 |--------|------|--------------|---------|-------|
 | POST | `/api/v1/auth/register` *public* | `email, password, workspace_name` | `{access_token, user}` | creates workspace + owner user in one DB transaction |
-| POST | `/api/v1/auth/login` *public* | `email, password` | `{access_token, user}` | |
+| POST | `/api/v1/auth/login` *public* | `email, password` | `{access_token, user}` | 401 same message for wrong email or password; 429 after 10 failures for that email in 15 minutes (D-42) |
+| POST | `/api/v1/auth/google/register` *public* | `credential, workspace_name` | 201 `{access_token, user}` | `credential` = Google ID token from the sign-in button. Creates workspace + owner with no password. 409 if that Google account or email is already registered (D-37) |
+| POST | `/api/v1/auth/google/login` *public* | `credential` | `{access_token, user}` | finds the user by Google `sub`; links a password account with the same email only when Google owns the address (D-38). 401 if no account |
+| POST | `/api/v1/auth/forgot-password` *public* | `email` | 202 `{detail}` | same answer whether or not the email exists; emails a 30-minute single-use link `{FRONTEND_URL}/reset-password#token=…`; at most 3 per account per hour (D-39, D-40, D-42) |
+| POST | `/api/v1/auth/reset-password` *public* | `token, new_password` | 204 | 400 for unknown, used or expired links (one message). Logs out every existing session (D-41) |
 | GET | `/api/v1/auth/me` | — | `user` + `workspace` | |
+
+Google routes: 401 "Google sign-in failed" for any bad credential; 503 if `GOOGLE_CLIENT_ID` is not set or Google's keys can't be fetched.
+Login tokens carry `sub`, `exp` and `ver` (the user's `token_version`); a token whose `ver` no longer matches is 401.
+Linking Google to a password account removes the password and ends its sessions (D-46).
 
 ## customers — `app/customers/router.py`
 | Method | Path | Body / query | Returns |

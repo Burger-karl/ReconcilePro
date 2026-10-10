@@ -26,6 +26,14 @@ from app.transactions.models import Transaction
 
 SOURCE = "bank_statement"
 MAX_FILE_BYTES = 5 * 1024 * 1024  # a year of SME statements is well under 1 MB
+# Far more than an SME's year. The cap keeps one import's work (and its database queries) bounded.
+MAX_LINES = 20_000
+# Column sizes in the transactions table. A longer value must be a clear 400, not a database crash (500).
+MAX_REFERENCE_LENGTH = 100
+MAX_PAYER_NAME_LENGTH = 200
+# PostgreSQL allows at most 65,535 values in one statement. At 13 columns a row, one INSERT for a big file
+# would pass that, so rows go in batches. Still one database transaction: all of the file or none of it.
+INSERT_BATCH_ROWS = 1_000
 
 
 class FileTooLarge(Exception):
@@ -103,8 +111,17 @@ def import_statement(session: Session, user: User, filename: str, content: bytes
         raise StatementError("The file is empty")
 
     parser, lines = detect_and_parse(text)
+    if len(lines) > MAX_LINES:
+        raise StatementError(
+            f"The file has more than {MAX_LINES:,} lines. Split it into smaller statements (e.g. one per quarter)."
+        )
     # MVP: only money IN is imported. Debits (charges, withdrawals) are counted and reported, not stored.
     credits = [line for line in lines if line.direction == "credit"]
+    for line in credits:
+        if line.bank_reference and len(line.bank_reference) > MAX_REFERENCE_LENGTH:
+            raise StatementError(
+                f"Line {line.line_number}: the reference is longer than {MAX_REFERENCE_LENGTH} characters"
+            )
 
     rows = [
         {
@@ -118,7 +135,8 @@ def import_statement(session: Session, user: User, filename: str, content: bytes
             "narration": line.narration,
             "bank_reference": line.bank_reference,
             "balance_kobo": line.balance_kobo,
-            "payer_name": line.payer_name,
+            # Only a hint for name matching, so cutting a very long one short loses nothing important.
+            "payer_name": line.payer_name[:MAX_PAYER_NAME_LENGTH] if line.payer_name else None,
             "external_reference": None,
             "fingerprint": line_fingerprint,
             "created_at": utc_now(),
@@ -126,14 +144,14 @@ def import_statement(session: Session, user: User, filename: str, content: bytes
         for line, line_fingerprint in zip(credits, fingerprints_for(user.workspace_id, SOURCE, credits), strict=True)
     ]
     added_ids: set[uuid.UUID] = set()
-    if rows:
+    for start in range(0, len(rows), INSERT_BATCH_ROWS):
         statement = (
             insert(Transaction)
-            .values(rows)
+            .values(rows[start : start + INSERT_BATCH_ROWS])
             .on_conflict_do_nothing(constraint="uq_transactions_workspace_fingerprint")
             .returning(Transaction.id)
         )
-        added_ids = set(session.exec(statement).scalars())
+        added_ids.update(session.exec(statement).scalars())
 
     settlements_added = sum(1 for row in rows if row["id"] in added_ids and row["kind"] == "settlement")
     # Match the NEW credits straight away, in this same transaction (feature 5). Settlements are skipped
