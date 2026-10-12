@@ -1,5 +1,6 @@
 """Feature 2 — customers: CRUD, alias search, audit trail, and workspace isolation (invariant 8)."""
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
@@ -117,3 +118,31 @@ def test_unknown_customer_is_404(client: TestClient, auth_headers: dict) -> None
     response = client.get("/api/v1/customers/00000000-0000-0000-0000-000000000000", headers=auth_headers)
 
     assert response.status_code == 404
+
+
+# --- email must be usable for online payment (Paystack needs a real address, D-34) ---------------------
+
+
+@pytest.mark.parametrize("email", ["not-an-email", "ada@", "@kolasons.ng"])
+def test_create_customer_rejects_invalid_email(client: TestClient, auth_headers: dict, email: str) -> None:
+    response = client.post("/api/v1/customers", json={"name": "Kola & Sons", "email": email}, headers=auth_headers)
+
+    assert response.status_code == 422
+
+
+def test_blank_email_means_no_email(client: TestClient, auth_headers: dict) -> None:
+    created = client.post("/api/v1/customers", json={"name": "Kola & Sons", "email": "  "}, headers=auth_headers)
+
+    assert created.status_code == 201
+    assert created.json()["email"] is None
+
+
+def test_update_rejects_invalid_email_and_can_clear_it(client: TestClient, auth_headers: dict) -> None:
+    customer = create_customer(client, auth_headers)
+
+    bad = client.patch(f"/api/v1/customers/{customer['id']}", json={"email": "nope"}, headers=auth_headers)
+    cleared = client.patch(f"/api/v1/customers/{customer['id']}", json={"email": ""}, headers=auth_headers)
+
+    assert bad.status_code == 422
+    assert cleared.status_code == 200
+    assert cleared.json()["email"] is None

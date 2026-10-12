@@ -33,7 +33,7 @@ Linking Google to a password account removes the password and ends its sessions 
 | Method | Path | Body / query | Returns |
 |--------|------|--------------|---------|
 | GET | `/api/v1/customers` | `?q=` search name/alias | list of customers with `outstanding_kobo` |
-| POST | `/api/v1/customers` | `name, email?, phone?, aliases[]` | customer |
+| POST | `/api/v1/customers` | `name, email?, phone?, aliases[]` | customer (`email` must be a valid address, blank = none: Paystack needs it, D-34) |
 | GET | `/api/v1/customers/{id}` | — | customer + their invoices |
 | PATCH | `/api/v1/customers/{id}` | any of the above | customer (writes audit event) |
 
