@@ -804,12 +804,107 @@ export interface components {
              */
             due_date: string;
         };
+        /** InvoiceDetail */
+        InvoiceDetail: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Description */
+            description: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "sent" | "part_paid" | "paid" | "overdue" | "void";
+            /**
+             * Issue Date
+             * Format: date
+             */
+            issue_date: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /** Sent At */
+            sent_at: string | null;
+            /** Subtotal Kobo */
+            subtotal_kobo: number;
+            /** Vat Kobo */
+            vat_kobo: number;
+            /** Total Kobo */
+            total_kobo: number;
+            /** Paid Kobo */
+            paid_kobo: number;
+            /** Outstanding Kobo */
+            outstanding_kobo: number;
+            /** Public Token */
+            public_token: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Payments */
+            payments: components["schemas"]["InvoicePayment"][];
+        };
         /** InvoiceList */
         InvoiceList: {
             /** Items */
             items: components["schemas"]["InvoiceRead"][];
             /** Total */
             total: number;
+        };
+        /**
+         * InvoicePayment
+         * @description One allocation to this invoice and the bank line it came from. Reversed ones are listed too.
+         */
+        InvoicePayment: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Transaction Id
+             * Format: uuid
+             */
+            transaction_id: string;
+            /** Source */
+            source: string;
+            /**
+             * Value Date
+             * Format: date
+             */
+            value_date: string;
+            /** Narration */
+            narration: string;
+            /** Amount Kobo */
+            amount_kobo: number;
+            /** Method */
+            method: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Reversed At */
+            reversed_at: string | null;
+            /** Reversal Reason */
+            reversal_reason: string | null;
         };
         /** InvoiceRead */
         InvoiceRead: {
@@ -1611,7 +1706,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InvoiceRead"];
+                    "application/json": components["schemas"]["InvoiceDetail"];
                 };
             };
             /** @description Validation Error */

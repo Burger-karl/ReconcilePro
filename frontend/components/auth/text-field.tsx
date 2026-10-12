@@ -20,7 +20,7 @@ export function TextField<T extends FieldValues>({
   control: Control<T>;
   name: Path<T>;
   label: string;
-  type?: "text" | "email" | "password";
+  type?: "text" | "email" | "password" | "date";
   autoComplete?: string;
   description?: string;
 }) {

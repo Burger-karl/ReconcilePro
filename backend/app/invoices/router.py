@@ -9,7 +9,15 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.core.deps import CurrentUser, SessionDep
 from app.invoices import service
-from app.invoices.schemas import InvoiceCreate, InvoiceList, InvoiceRead, InvoiceStatus, InvoiceUpdate, VoidRequest
+from app.invoices.schemas import (
+    InvoiceCreate,
+    InvoiceDetail,
+    InvoiceList,
+    InvoiceRead,
+    InvoiceStatus,
+    InvoiceUpdate,
+    VoidRequest,
+)
 
 router = APIRouter(prefix="/invoices", tags=["Invoices"])
 
@@ -50,7 +58,7 @@ def create_invoice(data: InvoiceCreate, user: CurrentUser, session: SessionDep) 
 
 
 @router.get("/{invoice_id}")
-def get_invoice(invoice_id: uuid.UUID, user: CurrentUser, session: SessionDep) -> InvoiceRead:
+def get_invoice(invoice_id: uuid.UUID, user: CurrentUser, session: SessionDep) -> InvoiceDetail:
     with http_errors():
         return service.get_invoice(session, user, invoice_id)
 

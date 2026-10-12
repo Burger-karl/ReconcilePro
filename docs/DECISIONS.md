@@ -418,3 +418,16 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
     panes scroll independently and the rail never scrolls away.
 - **Why:** all money movement stays in `allocate()` on the server (invariant 4) and every manual action stays
   audited (invariant 7); the client limits are only quick feedback, the server re-checks under a lock.
+
+## D-54 — Invoices screen: payments on the invoice, VAT only on the server, no `!` in compiled callbacks
+- **Decision:** `GET /api/v1/invoices/{id}` now returns `payments[]`: every allocation to the invoice, reversed
+  ones included with their reason, plus the bank line each came from (read by `allocations.invoice_payments()`,
+  since that feature owns the table). The Invoices screen is a ledger with status tabs, search and paging, and a
+  layout C inspector (amounts, reference, payment link, payments with Reverse, actions allowed in that status);
+  phones open `/invoices/[id]` instead. The create/edit form sends only the subtotal in kobo; VAT and total come
+  back from the server. Void and Reverse need a written reason (alert-dialog). A void invoice offers no payment link.
+- **Why:** the inspector has to show where the money on an invoice came from and let the accountant undo a wrong
+  match (invariant 7: reversal, never delete). One place computing VAT (D-02) means two screens can never disagree.
+- **Lesson:** the React Compiler (on in this project) memoises callbacks and checks the values they read on every
+  render. `reversing!.id` inside a dialog callback crashed the page while nothing was being reversed; read such
+  values with `?.` outside the callback instead of asserting with `!`.
