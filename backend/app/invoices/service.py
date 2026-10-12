@@ -18,7 +18,7 @@ from app.auth.models import User, Workspace
 from app.core.time import lagos_today, utc_now
 from app.customers.models import Customer
 from app.invoices.models import Invoice
-from app.invoices.schemas import InvoiceCreate, InvoiceRead, InvoiceUpdate, PublicInvoice
+from app.invoices.schemas import InvoiceCreate, InvoiceDetail, InvoicePayment, InvoiceRead, InvoiceUpdate, PublicInvoice
 
 __all__ = ["lagos_today"]  # re-exported for tests and other features: "today" always means Lagos today
 
@@ -169,8 +169,25 @@ def _read_one(session: Session, invoice: Invoice) -> InvoiceRead:
     return to_read(invoice, customer.name, paid_totals(session, invoice.workspace_id, [invoice.id]).get(invoice.id, 0))
 
 
-def get_invoice(session: Session, user: User, invoice_id: uuid.UUID) -> InvoiceRead:
-    return _read_one(session, _get_invoice(session, user, invoice_id))
+def get_invoice(session: Session, user: User, invoice_id: uuid.UUID) -> InvoiceDetail:
+    """One invoice with its payment history (the allocations feature owns that table and reads it)."""
+    invoice = _get_invoice(session, user, invoice_id)
+    payments = [
+        InvoicePayment(
+            id=allocation.id,
+            transaction_id=transaction.id,
+            source=transaction.source,
+            value_date=transaction.value_date,
+            narration=transaction.narration,
+            amount_kobo=allocation.amount_kobo,
+            method=allocation.method,
+            created_at=allocation.created_at,
+            reversed_at=allocation.reversed_at,
+            reversal_reason=allocation.reversal_reason,
+        )
+        for allocation, transaction in allocations.invoice_payments(session, user.workspace_id, invoice.id)
+    ]
+    return InvoiceDetail(**_read_one(session, invoice).model_dump(), payments=payments)
 
 
 def list_invoices(

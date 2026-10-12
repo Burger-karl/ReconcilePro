@@ -1,15 +1,18 @@
 """Feature 2 — invoices: create (server-side VAT), edit drafts, send, void, derived status,
 the public invoice page, audit events, and workspace isolation (invariant 8)."""
 
+import uuid
 from datetime import date, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
+from app.allocations import service as allocations
 from app.audit.models import AuditEvent
 from app.invoices.models import Invoice
 from app.invoices.service import lagos_today
+from app.transactions.models import Transaction
 
 TODAY = lagos_today()
 
@@ -305,3 +308,69 @@ def test_dates_round_trip(client: TestClient, auth_headers: dict, customer: dict
 
     assert date.fromisoformat(invoice["issue_date"]) == date(2026, 10, 1)
     assert date.fromisoformat(invoice["due_date"]) == date(2026, 10, 15)
+
+
+# --- payments on the invoice detail (frontend F4 inspector) --------------------------------------------
+
+
+def _paid_credit(session: Session, client: TestClient, headers: dict, invoice: dict, kobo: int):
+    """A bank credit allocated to `invoice` through allocate() (invariant 4)."""
+    workspace_id = uuid.UUID(client.get("/api/v1/auth/me", headers=headers).json()["workspace"]["id"])
+    credit = Transaction(
+        workspace_id=workspace_id, source="bank_statement", kind="credit", value_date=TODAY, amount_kobo=kobo,
+        narration=f"NIP/KOLA AND SONS/{invoice['reference']}", fingerprint=uuid.uuid4().hex * 2,
+    )
+    session.add(credit)
+    session.flush()
+    allocation = allocations.allocate(
+        session, workspace_id=workspace_id, transaction_id=credit.id, invoice_id=uuid.UUID(invoice["id"]),
+        amount_kobo=kobo, method="manual", actor_user_id=None,
+    )
+    session.flush()
+    return credit, allocation
+
+
+def test_invoice_detail_lists_payments_with_their_bank_line(
+    client: TestClient, auth_headers: dict, customer: dict, session: Session
+) -> None:
+    invoice = send(client, auth_headers, create_invoice(client, auth_headers, customer["id"])["id"])
+    credit, allocation = _paid_credit(session, client, auth_headers, invoice, 500_000)
+
+    detail = client.get(f"/api/v1/invoices/{invoice['id']}", headers=auth_headers).json()
+
+    assert detail["paid_kobo"] == 500_000
+    assert detail["payments"] == [
+        {
+            "id": str(allocation.id),
+            "transaction_id": str(credit.id),
+            "source": "bank_statement",
+            "value_date": TODAY.isoformat(),
+            "narration": credit.narration,
+            "amount_kobo": 500_000,
+            "method": "manual",
+            "created_at": detail["payments"][0]["created_at"],
+            "reversed_at": None,
+            "reversal_reason": None,
+        }
+    ]
+
+
+def test_invoice_detail_keeps_reversed_payments_with_the_reason(
+    client: TestClient, auth_headers: dict, customer: dict, session: Session
+) -> None:
+    invoice = send(client, auth_headers, create_invoice(client, auth_headers, customer["id"])["id"])
+    _, allocation = _paid_credit(session, client, auth_headers, invoice, 500_000)
+    client.post(f"/api/v1/allocations/{allocation.id}/reverse", json={"reason": "Wrong invoice"}, headers=auth_headers)
+
+    detail = client.get(f"/api/v1/invoices/{invoice['id']}", headers=auth_headers).json()
+
+    assert detail["paid_kobo"] == 0
+    assert len(detail["payments"]) == 1
+    assert detail["payments"][0]["reversal_reason"] == "Wrong invoice"
+    assert detail["payments"][0]["reversed_at"] is not None
+
+
+def test_new_invoice_has_no_payments(client: TestClient, auth_headers: dict, customer: dict) -> None:
+    invoice = create_invoice(client, auth_headers, customer["id"])
+
+    assert client.get(f"/api/v1/invoices/{invoice['id']}", headers=auth_headers).json()["payments"] == []

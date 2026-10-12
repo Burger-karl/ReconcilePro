@@ -106,6 +106,27 @@ def allocated_totals(
     return {transaction_id: total for transaction_id, total in rows}
 
 
+def invoice_payments(
+    session: Session, workspace_id: uuid.UUID, invoice_id: uuid.UUID
+) -> list[tuple[PaymentAllocation, Transaction]]:
+    """Every allocation to one invoice, reversed ones included, oldest first, with the bank line it came from.
+
+    Read-only. Reversed rows are kept because the history must show what was undone and why (invariant 7).
+    """
+    return list(
+        session.exec(
+            select(PaymentAllocation, Transaction)
+            .join(Transaction, Transaction.id == PaymentAllocation.transaction_id)
+            .where(
+                PaymentAllocation.workspace_id == workspace_id,
+                PaymentAllocation.invoice_id == invoice_id,
+                Transaction.workspace_id == workspace_id,
+            )
+            .order_by(PaymentAllocation.created_at)
+        ).all()
+    )
+
+
 # --- allocate -----------------------------------------------------------------------------------------
 
 

@@ -81,6 +81,25 @@ class InvoiceRead(BaseModel):
     created_at: datetime
 
 
+class InvoicePayment(BaseModel):
+    """One allocation to this invoice and the bank line it came from. Reversed ones are listed too."""
+
+    id: uuid.UUID  # the allocation id, used to reverse it
+    transaction_id: uuid.UUID
+    source: str  # bank_statement | paystack
+    value_date: date
+    narration: str
+    amount_kobo: int
+    method: str  # auto | suggested | manual
+    created_at: datetime
+    reversed_at: datetime | None
+    reversal_reason: str | None
+
+
+class InvoiceDetail(InvoiceRead):
+    payments: list[InvoicePayment]
+
+
 class InvoiceList(BaseModel):
     items: list[InvoiceRead]
     total: int

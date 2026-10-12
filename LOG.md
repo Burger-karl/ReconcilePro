@@ -136,3 +136,24 @@ Template (copy per day):
 - **Broke:** The keyboard handler called `.closest()` on the event target, which throws when the target is the window, so I now check it's an element first. The browser tool sent "/" instead of "?". On this slow machine Chrome sometimes paused CSS animations, so a closed dialog stayed in the page until the next frame was drawn (a browser quirk, not the app). Postgres timed out starting while a build was running.
 - **Learned:** The screen should never do money maths it then trusts. It sends the request, lets `allocate()` decide, and re-reads the queue. Showing the credit and outstanding amounts beside reasons that contain no money (D-29) makes the matcher's decision checkable at a glance.
 - **Next:** Commit F3. Then F4 Invoices: list with status filter, inspector with payments, create/edit draft, send, void.
+
+### Day 7 (continued): F4 Invoices
+- **Built:** Committed and merged F3. On `feat/frontend-invoices`:
+  - **Backend first, test-first:** `GET /invoices/{id}` now includes `payments[]` (every allocation, reversed ones too, with the bank line), via `allocations.invoice_payments()`. API.md said this would come "in feature 3" but it never had. 3 new tests failed first, then 373 pass.
+  - **Invoices screen:**
+    - Status tabs (All, Drafts, Sent, Part paid, Overdue, Paid, Void), a 300ms debounced search, paging, and a dense table with money right-aligned.
+    - Inspector: subtotal/VAT/total/paid/outstanding, dates, the payment reference, Copy payment link, and the payments list with Reverse.
+    - Actions by status: draft → Send (confirm) / Edit; open → Void (disabled while it has money on it); void → nothing.
+  - New/Edit dialog: customer select, ₦ amount parsed to kobo, dates. VAT is left to the server.
+  - Reason dialog for Void and Reverse.
+  - `/invoices/[id]` for phones.
+  - `lib/refresh.ts` re-reads every affected list after a change. Decision D-54.
+- **Checked (Chrome, seeded data):**
+  - The inspector shows INV-0002 with its ₦100,000 automatic payment.
+  - Reverse without a reason is refused. With a reason: Paid ₦0.00, Outstanding ₦268,750.00, the payment is listed as "Reversed: …", and the Match badge went 2 → 3.
+  - New invoice ₦45,000.10 → the server's VAT is ₦3,375.01 and the total ₦48,375.11. Send → confirm → Sent. Void with a reason → Void.
+  - Edit draft INV-0008 to ₦20,000 → VAT ₦1,500.00.
+  - The Overdue tab and the "kola" search return the right rows. On a phone a row opens `/invoices/[id]` with no sideways scroll.
+- **Broke:** Clicking an invoice crashed the page ("Cannot read properties of null (reading 'id')"). The React Compiler had memoised the Reverse dialog's callback and checked `reversing!.id` while nothing was selected; I fixed it by reading the id with `?.` outside the callback. A void invoice still offered "Copy payment link", so I hid it. The first `shadcn add` hit a network error. Browser-tool clicks on stale element refs did nothing, so I used JavaScript clicks to test the app's logic.
+- **Learned:** A `!` non-null assertion silences TypeScript but not the runtime, and with the React Compiler the code inside a callback can run at render time. Testing every status transition (draft → sent → void, paid → reversed) in the real UI found two bugs that lint and the build couldn't.
+- **Next:** Commit F4. Then F5 Customers: list with amount owed, aliases for name matching, add and edit.
