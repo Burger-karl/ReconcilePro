@@ -52,3 +52,15 @@ Template (copy per day):
 - **Broke:** Docker Desktop won't start, so I ran the tests against a throwaway Postgres (`pgserver`) instead. Because the database wasn't up while I wrote them, I never saw the new auth tests fail first. To make up for it I broke five security checks on purpose, one at a time, and the tests caught each one. The review found two real crashes in statement import: a reference over 100 characters (`value too long for type character varying(100)`), and about 5,000+ lines (`number of parameters must be between 0 and 65535`).
 - **Learned:** Google's guide says to key on `sub`, not email, and to trust the email for linking only when Google is authoritative for it. Pre-account hijacking is why linking must remove an unverified password. A JWT can't be deleted, so a version number in the user row logs out every old token. FastAPI turns any error raised while it reads a body into a 400, so the size-limit error has to be an HTTPException to come back as 413.
 - **Next:** Set `ENVIRONMENT=development` in my local `backend/.env`. Get Docker working and run the suite there. Create the Google OAuth client id. Commit this branch, merge the v1 branch and then this one. Then the UI: pick a layout and build the login, register, forgot-password and reset pages.
+
+## Day 7 — 2026-10-12
+- **Built:** Merged `chore/pyproject-and-api-v1` and `feat/auth-google-and-reset` into main (no conflicts). Before starting the frontend I found two backend features from API.md were still missing, so on `feat/dashboard-audit`:
+  - `GET /api/v1/dashboard/summary`: outstanding, open invoice count, collected this month, auto-match rate (whole %, or null when nothing was matched), needs review.
+  - `GET /api/v1/dashboard/collections?weeks=8`: Monday weeks, oldest first, empty weeks as 0.
+  - `GET /api/v1/dashboard/ageing`: current / 1–30 / 31–60 / 60+ days past due.
+  - `GET /api/v1/audit`: paged, filterable by entity, with the actor's email.
+  - Added `invoices.open_invoices()` and `reconciliation.needs_review_count()` so the dashboard reuses the same rules as the invoices page and the queue. Decisions D-48 and D-49. Tests written first and seen failing (26 failed, then passed); 370 tests pass.
+  - Chose layout C (matching board + inspector) for the signed-in app.
+- **Broke:** The throwaway test Postgres from last session had crashed mid-checkpoint and wouldn't restart within its 10-second limit, so I started a fresh one.
+- **Learned:** Collections are counted by the date the money arrived, not the date it was matched, so last month's total doesn't change when an old payment is matched today. Every dashboard number is derived (invariant 5), so it can never disagree with the invoice list or the queue.
+- **Next:** Plan the frontend: auth pages (login, register, Google, forgot/reset) and the layout C app shell, then the screens one by one.

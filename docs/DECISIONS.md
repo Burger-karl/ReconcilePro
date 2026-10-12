@@ -347,3 +347,26 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 - **Why:** found by the security review. One INSERT for ~5,000+ lines passed PostgreSQL's 65,535-parameter
   limit, and a long reference overflowed `VARCHAR(100)`: both crashed with a 500. Batching keeps the
   all-or-nothing rule (D-20) because the batches share one transaction.
+
+## D-48 — Dashboard numbers are derived, with these definitions
+- **Decision:**
+  - *Outstanding* = sum of `outstanding_kobo` over invoices whose derived status is sent, part_paid or overdue.
+  - *Collected this month* = non-reversed allocations whose bank line's `value_date` is in the current Lagos
+    month. Money that arrived but isn't matched to an invoice yet is not counted.
+  - *Auto-match rate* = share of non-reversed allocations created in the last 30 days with `method = 'auto'`,
+    as a whole percent; `null` when there were none.
+  - *Needs review* = credits (not settlements) with money not yet matched: the same rule as the queue.
+  - *Collections* = the same money per Monday-to-Sunday week, oldest first, empty weeks as 0.
+  - *Ageing* = open invoices by days past due date: current (not yet due / due today), 1–30, 31–60, 60+.
+- **Why:** nothing is stored twice (invariant 5), so the dashboard can never disagree with the invoices or the
+  queue. Dating collections by when the money arrived (not when it was matched) keeps last month's figure from
+  changing because an accountant matched an old payment today. `null` instead of 0% avoids saying auto-matching
+  failed when there was simply nothing to match.
+- **Rejected:** counting all credits as "collected" (includes money nobody has identified); a stored daily
+  summary table (one more thing to keep in step).
+
+## D-49 — The audit list is read-only, workspace-scoped, and shows who acted
+- **Decision:** `GET /api/v1/audit` lists the workspace's events newest first, filterable by entity, paged
+  (max 200), with the actor's email joined in (null for the system).
+- **Why:** the dashboard's "Recent activity" and the audit page both need it. There is no endpoint to change or
+  delete events (invariant 7).

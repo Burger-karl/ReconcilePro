@@ -117,17 +117,28 @@ def _read_many(session: Session, workspace_id: uuid.UUID, rows: list[tuple[Invoi
     return [to_read(invoice, name, paid.get(invoice.id, 0), today) for invoice, name in rows]
 
 
-def outstanding_by_customer(session: Session, workspace_id: uuid.UUID) -> dict[uuid.UUID, int]:
-    """What each customer still owes: outstanding on their sent / part_paid / overdue invoices."""
+# Derived statuses (D-05) that still have money owing.
+OPEN_STATUSES = ("sent", "part_paid", "overdue")
+
+
+def open_invoices(session: Session, workspace_id: uuid.UUID) -> list[InvoiceRead]:
+    """Every invoice with money still owed, with its derived status (invariant 5).
+
+    Only stored status "sent" can be open: drafts aren't owed yet and void ones never will be.
+    """
     rows = session.exec(
         select(Invoice, Customer.name)
         .join(Customer, Customer.id == Invoice.customer_id)
         .where(Invoice.workspace_id == workspace_id, Invoice.status == "sent")
     ).all()
+    return [invoice for invoice in _read_many(session, workspace_id, list(rows)) if invoice.status in OPEN_STATUSES]
+
+
+def outstanding_by_customer(session: Session, workspace_id: uuid.UUID) -> dict[uuid.UUID, int]:
+    """What each customer still owes: outstanding on their sent / part_paid / overdue invoices."""
     owed: dict[uuid.UUID, int] = defaultdict(int)
-    for invoice in _read_many(session, workspace_id, list(rows)):
-        if invoice.status in ("sent", "part_paid", "overdue"):
-            owed[invoice.customer_id] += invoice.outstanding_kobo
+    for invoice in open_invoices(session, workspace_id):
+        owed[invoice.customer_id] += invoice.outstanding_kobo
     return owed
 
 

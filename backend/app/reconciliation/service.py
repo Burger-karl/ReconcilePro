@@ -97,6 +97,11 @@ def _unallocated_credits(session: Session, workspace_id: uuid.UUID, transaction_
     return [(t, allocated.get(t.id, 0)) for t in transactions if allocated.get(t.id, 0) < t.amount_kobo]
 
 
+def needs_review_count(session: Session, workspace_id: uuid.UUID) -> int:
+    """How many credits still have money not matched to an invoice (the dashboard's "Needs review" tile)."""
+    return len(_unallocated_credits(session, workspace_id))
+
+
 # --- auto-matching ----------------------------------------------------------------------------------------
 
 
