@@ -370,3 +370,23 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
   (max 200), with the actor's email joined in (null for the system).
 - **Why:** the dashboard's "Recent activity" and the audit page both need it. There is no endpoint to change or
   delete events (invariant 7).
+
+## D-50 — Layout C: dark icon rail, screen, inspector
+- **Decision:** the signed-in app uses layout C from the prototype: a narrow dark-navy icon rail (shadcn `sidebar`
+  in `icon` mode, always collapsed on desktop, a slide-out sheet with labels on phones), the screen in the middle,
+  and an optional inspector on the right (≥1024px) that explains the selected item. The rail is slate-950 in both
+  themes; "Match" carries an amber count of credits needing review.
+- **Why:** reconciliation is about one selected thing at a time (a credit, an invoice) and why it matches; an
+  inspector shows that without leaving the list. The rail gives the work area the most width for tables.
+- **Rejected:** A (wide sidebar, master-detail) and B (top nav, inbox-first) from `/prototype/layout-options`,
+  which was deleted once the real shell existed.
+
+## D-51 — Frontend session: token in localStorage, client-side guard, SWR, react-hook-form + zod
+- **Decision:** the login token is kept in `localStorage` and sent as a bearer header (`lib/api.ts`).
+  `lib/auth.tsx` asks `/auth/me` on load; `app/(app)/layout.tsx` sends signed-out visitors to `/login?next=…`
+  (only same-site paths are accepted for `next`). Reads use SWR; forms use react-hook-form + zod + shadcn `field`.
+- **Why:** web (Vercel) and API (Render) are different sites, so an httpOnly cookie would need `SameSite=None` plus
+  CSRF protection. The page guard is only for the user: the API checks every request itself. SWR gives caching,
+  refresh-on-focus and `mutate()` for a few lines per screen.
+- **Cost:** any script injected into the page could read the token, so the UI never renders user data as raw HTML.
+  `proxy.ts` (Next 16's renamed middleware) can't see `localStorage`, so it isn't used for auth.

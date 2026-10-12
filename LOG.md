@@ -63,4 +63,35 @@ Template (copy per day):
   - Chose layout C (matching board + inspector) for the signed-in app.
 - **Broke:** The throwaway test Postgres from last session had crashed mid-checkpoint and wouldn't restart within its 10-second limit, so I started a fresh one.
 - **Learned:** Collections are counted by the date the money arrived, not the date it was matched, so last month's total doesn't change when an old payment is matched today. Every dashboard number is derived (invariant 5), so it can never disagree with the invoice list or the queue.
-- **Next:** Plan the frontend: auth pages (login, register, Google, forgot/reset) and the layout C app shell, then the screens one by one.
+- **Built (frontend, F1 foundation on `feat/frontend-foundation`):** Planned the frontend in 9 slices: F1 foundation, F2 Overview, F3 Match board, F4 Invoices, F5 Customers, F6 Statements, F7 Audit, F8 public invoice and Paystack return, F9 landing. Committed and merged the dashboard/audit slice first. Then:
+  - Generated `types/api.ts` from the backend schema (exported straight from `app.openapi()`, so no running server was needed).
+  - `lib/auth.tsx`: who is signed in, checked with `/auth/me`. Signing out also clears the SWR cache.
+  - Pages:
+    - `/login`
+    - `/register`: Google needs the business name filled in first.
+    - `/forgot-password`: the same message for every email.
+    - `/reset-password`: reads `#token=` and removes it from the address bar.
+  - `GoogleSignInButton`: loads Google's script with `next/script`. It and its "or" line are hidden when `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is empty.
+  - Layout C shell:
+    - Dark icon rail (shadcn sidebar in icon mode) with an amber needs-review count on Match.
+    - Account menu with theme and sign out.
+    - Slide-out menu on phones.
+    - A `Screen` frame with an inspector slot, and placeholder screens for F2–F7.
+  - `safeNextPath()` blocks open redirects through `?next=`. `lib/api.ts` turns "server unreachable" into a clear error.
+  - Decisions D-50 (layout C) and D-51 (frontend session). `frontend/CLAUDE.md` updated. Deleted the layout prototype.
+- **Checked:** `npm run lint` and `npm run build` pass. In Chrome against the real API:
+  - Submitting an empty form shows an error under each field.
+  - Registering lands on Overview.
+  - The rail, account menu and dark theme work.
+  - Sign-out clears the token.
+  - A wrong password shows "Incorrect email or password".
+  - Forgot → reset → sign in with the new password works; the old password and a reused link are refused.
+  - At 375px there's no sideways scroll, and the slide-out menu lists all six screens.
+- **Broke (frontend):**
+  - This shadcn style ("radix-nova") has no `form` component, so I used its `field` component instead.
+  - shadcn's generated `use-mobile.ts` failed the React lint rule (setState inside an effect). I rewrote it with `useSyncExternalStore`.
+  - The build failed on stale `.next/dev` types that still pointed at the deleted prototype.
+  - The API rejects `.test` email addresses (special-use domain).
+  - Browser screenshots timed out under memory pressure, so I checked some screens with JavaScript instead.
+- **Learned:** Next 16 renamed `middleware.ts` to `proxy.ts`, and it can't see `localStorage`, so the session check lives in the `(app)` layout. That check is only for the user; the API is the real protection. A token after `#` in a URL never reaches a server. `next/script`'s `onReady` runs on every mount, which redraws Google's button after navigating between pages.
+- **Next:** Commit F1. Then F2 Overview: KPI tiles, collections and ageing charts (load the dataviz skill first), and recent activity.

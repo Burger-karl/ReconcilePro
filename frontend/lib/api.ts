@@ -6,8 +6,16 @@
  *   so screens can show it directly ("Allocation would exceed the invoice outstanding").
  */
 
+import type { components } from "@/types/api";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const TOKEN_KEY = "reconcile.token";
+
+/** Every API path starts with this (backend DECISIONS D-36). */
+export const API = "/api/v1";
+
+/** Request/response shapes generated from the backend (types/api.ts), e.g. Schemas["TokenResponse"]. */
+export type Schemas = components["schemas"];
 
 export class ApiError extends Error {
   constructor(
@@ -46,7 +54,14 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     body = JSON.stringify(options.body);
   }
 
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers, body });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, { ...options, headers, body });
+  } catch {
+    // fetch only throws when no answer arrived at all (server down, offline, CORS refused).
+    // Status 0 = "no HTTP status", so screens can tell this apart from a real API error.
+    throw new ApiError(0, "Can't reach the Reconcile server. Check your connection and try again.");
+  }
 
   if (!response.ok) {
     // FastAPI errors look like {"detail": "..."}; validation errors have a list instead of a string.
@@ -64,3 +79,6 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   // 204 No Content has no body to parse.
   return (response.status === 204 ? undefined : await response.json()) as T;
 }
+
+/** SWR's fetcher: useSWR(`${API}/dashboard/summary`) calls api() with that path. */
+export const swrFetcher = <T>(path: string) => api<T>(path);
