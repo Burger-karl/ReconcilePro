@@ -85,14 +85,15 @@
   --chart-4: #cbd5e1;
   --chart-5: #e2e8f0;
   --radius: 0.5rem; /* 8px */
-  --sidebar: #f8fafc;
-  --sidebar-foreground: #0f172a;
-  --sidebar-primary: #0f172a;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f1f5f9;
-  --sidebar-accent-foreground: #0f172a;
-  --sidebar-border: #e2e8f0;
-  --sidebar-ring: #0f172a;
+  /* Layout C: the icon rail is dark navy in BOTH themes (DECISIONS D-50). slate-400 on slate-950 is ~7:1. */
+  --sidebar: #020617;
+  --sidebar-foreground: #94a3b8;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #020617;
+  --sidebar-accent: #1e293b;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1e293b;
+  --sidebar-ring: #cbd5e1;
 }
 
 /* Dark theme (toggle) */
@@ -122,11 +123,11 @@
   --chart-4: #475569;
   --chart-5: #334155;
   --sidebar: #020617;
-  --sidebar-foreground: #f8fafc;
-  --sidebar-primary: #f8fafc;
-  --sidebar-primary-foreground: #0f172a;
+  --sidebar-foreground: #94a3b8;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #020617;
   --sidebar-accent: #1e293b;
-  --sidebar-accent-foreground: #f8fafc;
+  --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #1e293b;
   --sidebar-ring: #cbd5e1;
 }

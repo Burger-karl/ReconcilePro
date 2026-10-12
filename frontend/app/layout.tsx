@@ -4,6 +4,7 @@ import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/lib/auth";
 import "./globals.css";
 
 // next/font downloads the fonts at build time and serves them from our own domain,
@@ -36,7 +37,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="flex min-h-full flex-col">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <TooltipProvider>{children}</TooltipProvider>
+          <TooltipProvider>
+            {/* Who is signed in, shared by the auth pages and the app (lib/auth.tsx). */}
+            <AuthProvider>{children}</AuthProvider>
+          </TooltipProvider>
           <Toaster />
         </ThemeProvider>
       </body>
