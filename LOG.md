@@ -157,3 +157,19 @@ Template (copy per day):
 - **Broke:** Clicking an invoice crashed the page ("Cannot read properties of null (reading 'id')"). The React Compiler had memoised the Reverse dialog's callback and checked `reversing!.id` while nothing was selected; I fixed it by reading the id with `?.` outside the callback. A void invoice still offered "Copy payment link", so I hid it. The first `shadcn add` hit a network error. Browser-tool clicks on stale element refs did nothing, so I used JavaScript clicks to test the app's logic.
 - **Learned:** A `!` non-null assertion silences TypeScript but not the runtime, and with the React Compiler the code inside a callback can run at render time. Testing every status transition (draft → sent → void, paid → reversed) in the real UI found two bugs that lint and the build couldn't.
 - **Next:** Commit F4. Then F5 Customers: list with amount owed, aliases for name matching, add and edit.
+
+### Day 7 (continued): F5 Customers
+- **Built:** Committed and merged F4. On `feat/frontend-customers`:
+  - **Backend, test-first:** a customer's email must now be a valid address, and a blank one means "no email". Paystack needs a real address (D-34), so a bad one would only have failed at payment time. 5 new tests failed first; 378 now pass.
+  - **Customers screen:** a search box, a table (name, names on bank statements, email, outstanding), and an inspector with contact details, aliases, what they owe and their invoices (each linking to `/invoices/[id]`).
+  - An Add/Edit dialog with aliases one per line, and `/customers/[id]` for phones.
+- **Checked:** Types, lint and build pass. Through the running API: a bad email → 422, a blank one is stored as null, blank aliases are dropped and the rest trimmed, PATCH sets the email and replaces the aliases. In Chrome (seeded data):
+  - The list shows every customer with the right outstanding (e.g. Bisi ₦168,750.00).
+  - Add with "femi-at-bakery" shows "Enter a valid email address, or leave it blank". With a real email it saves, keeping both aliases including "F. ADEYEMI, BAKERY" (the comma survives because aliases go one per line).
+  - In a narrow window a row opens `/customers/[id]`: contact, outstanding ₦32,250.00, bank names, and 2 invoices linking to their pages.
+  - Edit added "KOLA&SONS LTD" and the panel updated. No console errors.
+  - Not checked: the wide-screen inspector, because the browser window was only 980px. It uses the same code pattern as Invoices, which was tested.
+  - Decision D-55.
+- **Broke:** `npx next start` couldn't find the project's Next.js and started downloading `next@16.4.0`. I stopped it straight away and now start it with `npm start` (the local 16.3.8). The Chrome extension was disconnected at first; I reconnected it.
+- **Learned:** Validate data where it is stored, not where it is used. An email typo would otherwise surface weeks later as a failed Paystack checkout. Pick the input shape from the data: bank names can contain commas, so one per line is safer than comma-separated.
+- **Next:** Commit F5. Then F6 Statements: CSV upload with the import summary, and the transactions list.

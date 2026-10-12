@@ -431,3 +431,12 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 - **Lesson:** the React Compiler (on in this project) memoises callbacks and checks the values they read on every
   render. `reversing!.id` inside a dialog callback crashed the page while nothing was being reversed; read such
   values with `?.` outside the callback instead of asserting with `!`.
+
+## D-55 — Customers: emails must be usable, aliases one per line
+- **Decision:** the API now validates a customer's email (`EmailStr`); blank or spaces mean "no email" (null).
+  The Customers screen lists name, names on bank statements, email and outstanding, with a layout C inspector
+  (contact, aliases, outstanding, invoices linking to `/invoices/[id]`) and `/customers/[id]` on phones. The form
+  takes aliases one per line, trimmed, blanks dropped, at most 20.
+- **Why:** Paystack needs a real address to start an online payment (D-34); an unchecked typo would only have
+  failed when the customer tried to pay. Aliases feed name matching (up to 30 of 100 points, D-25), and bank names
+  can contain commas ("F. ADEYEMI, BAKERY"), so a comma-separated field would split them wrongly.

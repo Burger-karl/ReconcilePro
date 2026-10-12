@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.invoices.schemas import InvoiceRead
 
@@ -15,6 +15,15 @@ def _clean_name(value: str) -> str:
     return value
 
 
+def _blank_email_is_none(value: object) -> object:
+    # Runs BEFORE the email check: the form sends "" or spaces for "no email", which means None.
+    # Paystack needs a real address to take an online payment (DECISIONS D-34), so anything else is checked.
+    if isinstance(value, str):
+        value = value.strip()
+        return value or None
+    return value
+
+
 def _clean_aliases(values: list[str]) -> list[str]:
     # Trim each alias and drop empty ones; the form sends "" for an empty row.
     return [alias.strip() for alias in values if alias.strip()]
@@ -22,10 +31,11 @@ def _clean_aliases(values: list[str]) -> list[str]:
 
 class CustomerCreate(BaseModel):
     name: str = Field(max_length=200)
-    email: str | None = Field(default=None, max_length=320)
+    email: EmailStr | None = Field(default=None, max_length=320)
     phone: str | None = Field(default=None, max_length=40)
     aliases: list[str] = Field(default_factory=list, max_length=20)
 
+    _email = field_validator("email", mode="before")(_blank_email_is_none)
     _name = field_validator("name")(_clean_name)
     _aliases = field_validator("aliases")(_clean_aliases)
 
@@ -34,9 +44,11 @@ class CustomerUpdate(BaseModel):
     """Every field optional: only the fields sent are changed."""
 
     name: str | None = Field(default=None, max_length=200)
-    email: str | None = Field(default=None, max_length=320)
+    email: EmailStr | None = Field(default=None, max_length=320)
     phone: str | None = Field(default=None, max_length=40)
     aliases: list[str] | None = Field(default=None, max_length=20)
+
+    _email = field_validator("email", mode="before")(_blank_email_is_none)
 
     @field_validator("name")
     @classmethod
