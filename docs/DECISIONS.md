@@ -461,3 +461,17 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 - **Why:** invariant 7 says every manual action is recorded and nothing is deleted; the page is where an
   accountant (or examiner) checks that. Event data can contain what people typed (names, reasons), so it is
   only ever rendered as text, never HTML.
+
+## D-58 — Public invoice page: never trust the return URL, poll the API briefly, force light
+- **Decision:** `/i/[token]` (no login, 375px first) shows business, number + status, amount due (36px), bill-to,
+  subtotal/VAT/total (+ paid so far), a full-width 48px "Pay ₦X with Paystack" button and bank-transfer
+  instructions built around the reference to quote (44px copy button). Paid, part-paid, void and unknown-token
+  states follow pages/public-invoice.md. Paying redirects only to an `https://*.paystack.com` checkout URL.
+  When Paystack sends the customer back (`?reference=…`), the page shows "confirming" and re-asks the API every
+  3 seconds for one minute (also while the tab is hidden), switching to "payment received" only when the API —
+  i.e. the verified webhook — says paid. The page is always light (`forcedTheme` for `/i/` paths).
+- **Why:** the return URL can be typed by anyone, so it proves nothing (backend D-30: only verify-transaction
+  counts). Checking the redirect host keeps the page from becoming an open redirect even if a bad URL got in.
+- **Gaps (data the API doesn't have yet):** no payment date ("payment received on …"), no business bank account
+  number for the transfer instructions, and no way to know in advance that a customer has no email (the button
+  shows the API's "pay by bank transfer" message instead).
