@@ -203,3 +203,25 @@ Template (copy per day):
 - **Broke:** Nothing new. Screenshots still time out now and then on this machine, so I read the page with JavaScript.
 - **Learned:** A draft edit records only the field that was sent (subtotal); VAT and total aren't listed because they are recomputed, not edited. An audit page is most useful when every row reads as a sentence and every detail as "before → after".
 - **Next:** Commit F7. Then F8: the public invoice page (`/i/[token]`, 375px phones) and the page Paystack returns to.
+
+### Day 7 (continued): F8 Public invoice page and Paystack return
+- **Built:** Committed and merged F7. On `feat/frontend-public-invoice`:
+  - `/i/[token]` (no login, 375px first): business, number + status badge, amount due (36px), due date, bill-to, subtotal/VAT/total, paid so far.
+  - A full-width 48px "Pay ₦X with Paystack" button that redirects only to an `https://*.paystack.com` checkout.
+  - Bank-transfer instructions with the reference to quote and a 44px copy button.
+  - States: paid (thank you), part paid (charges what's left), void (cancelled, no button), unknown link (plain "Invoice not found").
+  - Paystack return (`?reference=…`): shows "confirming" and re-asks the API every 3s for up to a minute. It only says "payment received" when the API says paid; the URL proves nothing.
+  - The page is always light, through `forcedTheme` on `/i/` paths. Decision D-58.
+- **Checked (Chrome, signed out, saved app theme dark):**
+  - The page stayed light. INV-0004 showed everything in the spec's order.
+  - Pay with no Paystack key → "Online payment is unavailable right now. Please try again."
+  - A customer with no email → "Online payment isn't set up for this invoice. Please pay by bank transfer."
+  - Paid, part-paid, void and unknown links each showed the right state.
+  - Return flow: opening INV-0009 with `?reference=` showed "confirming" with status still Sent. After a payment was recorded through the API (standing in for the webhook), the page switched by itself to Paid, ₦0.00, "Thank you — payment received."
+  - At 375px: Pay button 274×48, copy button 44×44, amount 36px, no sideways scroll.
+- **Broke:**
+  - The React lint rule banned `Date.now()` during render, so a one-minute timer now flips a "window over" flag.
+  - The first return test never updated. Chrome reported the tab as hidden and SWR pauses polling for hidden pages, so I turned on `refreshWhenHidden` for that one-minute window (a customer may switch to their banking app).
+  - `notFound()` isn't documented for client components, so the page shows its own "Invoice not found".
+- **Learned:** A redirect back from a payment provider is not proof of payment; only the verified webhook is. SWR's polling respects page visibility by default, which is right for dashboards but wrong for a short "waiting for payment" window. The spec asked for a payment date and bank details that the API doesn't have yet; I recorded them as gaps rather than inventing them.
+- **Next:** Commit F8. Then F9, the landing page.
