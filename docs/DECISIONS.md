@@ -440,3 +440,14 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 - **Why:** Paystack needs a real address to start an online payment (D-34); an unchecked typo would only have
   failed when the customer tried to pay. Aliases feed name matching (up to 30 of 100 points, D-25), and bank names
   can contain commas ("F. ADEYEMI, BAKERY"), so a comma-separated field would split them wrongly.
+
+## D-56 — Statements screen: upload explains the import, ledger shows where each line's money went
+- **Decision:** the Statements screen has an upload card (CSV only, 5 MB checked before sending) that turns the
+  API's `ImportResult` into plain sentences: lines read, new lines, duplicates skipped, matched automatically,
+  Paystack payouts, money-out ignored, and "need you" with a button to Match. Below it, a ledger of every
+  bank and Paystack line with tabs (All, Unmatched, Part matched, Matched, Paystack payouts) and an inspector
+  showing the line's narration (mono) and every allocation, reversed ones included, linking to the invoice;
+  `/transactions/[id]` on phones. A payout shows only its amount and an explanation, never "still to match".
+- **Why:** the import is all-or-nothing and duplicate-safe on the server (D-20, invariant 2); the screen has to
+  make that visible ("3 already imported before (skipped)") so an accountant trusts re-importing an overlapping
+  export. Showing "still to match" for a settlement would contradict invariant 6.
