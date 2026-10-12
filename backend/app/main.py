@@ -10,10 +10,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.allocations.router import router as allocations_router
+from app.audit.router import router as audit_router
 from app.auth.router import router as auth_router
 from app.core.config import settings
 from app.core.limits import LimitRequestSize
 from app.customers.router import router as customers_router
+from app.dashboard.router import router as dashboard_router
 from app.invoices.public_router import router as public_invoices_router
 from app.invoices.router import router as invoices_router
 from app.paystack.router import router as paystack_router
@@ -68,6 +70,8 @@ def create_app() -> FastAPI:
     app.include_router(reconciliation_router, prefix=API_V1_PREFIX)
     app.include_router(allocations_router, prefix=API_V1_PREFIX)
     app.include_router(paystack_router, prefix=API_V1_PREFIX)
+    app.include_router(dashboard_router, prefix=API_V1_PREFIX)
+    app.include_router(audit_router, prefix=API_V1_PREFIX)
 
     app.add_api_route("/api/health", health, methods=["GET"])
     return app

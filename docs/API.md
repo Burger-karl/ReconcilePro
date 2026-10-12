@@ -80,14 +80,14 @@ Linking Google to a password account removes the password and ends its sessions 
 ## dashboard — `app/dashboard/router.py`
 | Method | Path | Returns |
 |--------|------|---------|
-| GET | `/api/v1/dashboard/summary` | `outstanding_kobo, collected_this_month_kobo, auto_match_rate, needs_review_count` |
-| GET | `/api/v1/dashboard/collections` | `?weeks=8` → `[{week_start, collected_kobo}]` |
-| GET | `/api/v1/dashboard/ageing` | `[{bucket: current\|1_30\|31_60\|60_plus, outstanding_kobo, count}]` |
+| GET | `/api/v1/dashboard/summary` | `outstanding_kobo, open_invoice_count, collected_this_month_kobo, auto_match_rate` (whole % or `null`), `needs_review_count` — definitions in D-48 |
+| GET | `/api/v1/dashboard/collections` | `?weeks=8` (1–52) → `[{week_start, collected_kobo}]`, Monday weeks, oldest first, empty weeks as 0 |
+| GET | `/api/v1/dashboard/ageing` | `[{bucket: current\|1_30\|31_60\|60_plus, outstanding_kobo, count}]`, always all four, by days past due |
 
 ## audit — `app/audit/router.py`
 | Method | Path | Query | Returns |
 |--------|------|-------|---------|
-| GET | `/api/v1/audit` | `?entity_type=&entity_id=&limit=&offset=` | list of audit events, newest first |
+| GET | `/api/v1/audit` | `?entity_type=&entity_id=&limit=` (1–200, default 50) `&offset=` | `{items: [{id, action, entity_type, entity_id, actor_user_id, actor_email, data, created_at}], total}`, newest first; `actor_*` null when the system acted (D-49) |
 
 ## webhooks — `app/paystack/router.py`
 | Method | Path | Notes |
