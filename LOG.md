@@ -95,3 +95,26 @@ Template (copy per day):
   - Browser screenshots timed out under memory pressure, so I checked some screens with JavaScript instead.
 - **Learned:** Next 16 renamed `middleware.ts` to `proxy.ts`, and it can't see `localStorage`, so the session check lives in the `(app)` layout. That check is only for the user; the API is the real protection. A token after `#` in a URL never reaches a server. `next/script`'s `onReady` runs on every mount, which redraws Google's button after navigating between pages.
 - **Next:** Commit F1. Then F2 Overview: KPI tiles, collections and ageing charts (load the dataviz skill first), and recent activity.
+
+### Day 7 (continued): F2 Overview
+- **Built:** Committed and merged F1 into main. On `feat/frontend-overview`:
+  - Overview screen with four KPI tiles (Outstanding, Collected this month, Auto-match rate, Needs review → links to Match).
+  - Collections by week: a Recharts column chart through shadcn's `chart` wrapper, with a value-first tooltip and a "View as table" fallback.
+  - Ageing: a list with a bar per bucket, in validated status colours.
+  - Recent activity: the last 8 audit events as plain sentences (`lib/audit-text.ts`, reused later by the Audit page), with "View all".
+  - `compactNaira()` for axis ticks only.
+  - `backend/seed.py`: a demo workspace created through the real API (invoices due at different dates, a statement over 8 weeks, automatic and manual matches). It refuses to run outside development, and refuses to run twice. CLAUDE.md already listed `python seed.py` but the file didn't exist.
+  - Decision D-52.
+- **Checked:** Lint and build pass. Seeded a dev database and signed in in Chrome:
+  - The figures match the seed by hand (₦437,500.00 outstanding = the five open invoices; 67% = 2 of 3 matches automatic; 2 need review).
+  - Light and dark themes both work, the tooltip reads "₦96,750.00 — Week of 31 Aug 2026", and an expired token from the old database sent me back to sign in.
+  - At 375px there's no sideways scroll.
+- **Broke:**
+  - The dataviz validator rejected my first ageing colours (orange vs red ΔE 8.7; red-400 vs red-600 in dark ΔE 14.3), so I re-stepped them.
+  - The 2×2 tiles split "₦437,500.00" across two lines on a phone.
+  - Recharts' grow-in animation left the columns at zero height on this slow machine.
+  - shadcn's tooltip drops the "Week of" label when you give it a custom formatter, so I wrote a small tooltip.
+  - A leftover `next start` from the F1 check was still holding port 3000.
+  - The seed showed PyJWT warning that my local `backend/.env` JWT_SECRET is only 9 bytes. Fine for development, but production would refuse it (D-43).
+- **Learned:** Run the palette validator instead of trusting your eye: two "obviously different" reds weren't. Showing money to the kobo is a layout constraint, not just a formatting rule. A single-series chart needs no legend; the title names it.
+- **Next:** Commit F2. Then F3, the Match board: unmatched credits beside candidate invoices, scores with reasons, and accept / allocate part / not this one from the keyboard.

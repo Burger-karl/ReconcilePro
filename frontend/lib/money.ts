@@ -20,6 +20,21 @@ export function formatNaira(kobo: number): string {
   return `${sign}₦${nairaGrouping.format(naira)}.${String(rest).padStart(2, "0")}`;
 }
 
+const nairaCompact = new Intl.NumberFormat("en-NG", { notation: "compact", maximumFractionDigits: 1 });
+
+/**
+ * compactNaira(120_000_000) → "₦1.2M". ONLY for chart axis ticks, where space is tight and the exact
+ * value is one hover away. Anywhere a reader needs the amount (tiles, tables, tooltips) use formatNaira:
+ * the design system forbids rounded money (MASTER.md §8).
+ */
+export function compactNaira(kobo: number): string {
+  if (!Number.isSafeInteger(kobo)) {
+    throw new Error(`compactNaira expects an integer number of kobo, got ${kobo}`);
+  }
+  // Dividing is fine here only because the result is deliberately rounded for display.
+  return `₦${nairaCompact.format(kobo / 100)}`;
+}
+
 /**
  * Parse what a user typed in a ₦ field ("90,000", "90000.5", "₦1,250.75") into kobo.
  * Works on the text, not on a float, so "0.29" becomes exactly 29 kobo.
