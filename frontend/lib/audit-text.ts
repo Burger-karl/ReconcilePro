@@ -86,3 +86,67 @@ export function timeAgo(iso: string, now: Date = new Date()): string {
 export function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat("en-NG", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
 }
+
+// --- details and links (Audit log page) ---------------------------------------------------------------
+
+/** "invoice_number" → "Invoice number". Keys come from the backend's record() calls. */
+const humanise = (key: string) => {
+  const words = key.replace(/_kobo$/, "").replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+};
+
+/** One value as text: kobo fields as ₦ (they end in _kobo, invariant 1), null as "none", objects as JSON. */
+function valueText(key: string, value: unknown, formatMoney: (kobo: number) => string): string {
+  if (value === null || value === undefined || value === "") return "none";
+  if (key.endsWith("_kobo") && Number.isSafeInteger(value)) return formatMoney(value as number);
+  if (Array.isArray(value)) return value.length ? value.join(", ") : "none";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+export type DetailRow = { label: string; value: string };
+
+/**
+ * Everything recorded with the event, as label/value rows. Ids are left out (the links cover them).
+ * Edits ({"changes": {"subtotal_kobo": {"from": 1500000, "to": 2000000}}}) become "Subtotal: ₦15,000.00 → ₦20,000.00".
+ */
+export function eventDetails(event: AuditEvent, formatMoney: (kobo: number) => string): DetailRow[] {
+  const rows: DetailRow[] = [];
+  for (const [key, value] of Object.entries(event.data ?? {})) {
+    if (key === "changes" && value && typeof value === "object") {
+      for (const [field, change] of Object.entries(value as Record<string, { from: unknown; to: unknown }>)) {
+        rows.push({
+          label: humanise(field),
+          value: `${valueText(field, change?.from, formatMoney)} → ${valueText(field, change?.to, formatMoney)}`,
+        });
+      }
+    } else if (!key.endsWith("_id")) {
+      rows.push({ label: humanise(key), value: valueText(key, value, formatMoney) });
+    }
+  }
+  return rows;
+}
+
+/** Where to look at the thing the event is about. Only links to screens that exist. */
+export function eventLinks(event: AuditEvent): { href: string; label: string }[] {
+  const data = event.data ?? {};
+  const id = (value: unknown) => (typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value) ? value : null);
+  switch (event.entity_type) {
+    case "invoice":
+      return [{ href: `/invoices/${event.entity_id}`, label: "Open invoice" }];
+    case "customer":
+      return [{ href: `/customers/${event.entity_id}`, label: "Open customer" }];
+    case "transaction":
+      return [{ href: `/transactions/${event.entity_id}`, label: "Open bank line" }];
+    case "allocation": {
+      const links = [];
+      if (id(data.invoice_id)) links.push({ href: `/invoices/${data.invoice_id}`, label: "Open invoice" });
+      if (id(data.transaction_id)) links.push({ href: `/transactions/${data.transaction_id}`, label: "Open bank line" });
+      return links;
+    }
+    case "statement":
+      return [{ href: "/statements", label: "Open statements" }];
+    default:
+      return [];
+  }
+}
