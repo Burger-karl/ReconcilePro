@@ -7,12 +7,15 @@ export function Screen({
   description,
   actions,
   inspector,
+  flush = false,
   children,
 }: {
   title: string;
   description?: string;
   actions?: React.ReactNode;
   inspector?: React.ReactNode;
+  /** Edge-to-edge body with no padding and no page scroll, for screens that lay out their own panes. */
+  flush?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -25,7 +28,7 @@ export function Screen({
           </div>
           {actions && <div className="flex items-center gap-2">{actions}</div>}
         </header>
-        <div className="flex-1 overflow-auto p-4 sm:p-6">{children}</div>
+        <div className={flush ? "flex min-h-0 flex-1" : "flex-1 overflow-auto p-4 sm:p-6"}>{children}</div>
       </div>
       {inspector && (
         <aside className="hidden w-96 shrink-0 overflow-y-auto border-l bg-canvas lg:block">{inspector}</aside>

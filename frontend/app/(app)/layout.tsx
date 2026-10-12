@@ -61,9 +61,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }}
     >
       {/* Always collapsed to icons on desktop: layout C has a rail, not a full sidebar. */}
-      <SidebarProvider open={false}>
+      {/* The shell is exactly one screen tall; each screen scrolls inside its own area (so Match's two
+          panes can scroll independently, and the rail never scrolls away). */}
+      <SidebarProvider open={false} className="h-svh">
         <Rail />
-        <SidebarInset className="min-w-0 bg-background">
+        <SidebarInset className="min-h-0 min-w-0 overflow-hidden bg-background">
           {/* Phones: the rail becomes a slide-out menu opened from this bar. */}
           <div className="flex items-center gap-2 border-b px-3 py-2 md:hidden">
             <SidebarTrigger aria-label="Open navigation" />

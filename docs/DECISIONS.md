@@ -403,3 +403,18 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
   §8), so on a 375px phone a 2×2 grid split "₦437,500.00" across two lines; one column keeps it whole (a small,
   deliberate change from pages/dashboard.md's "2×2 below 768px"). Recharts' default animation left the columns
   at zero height on a slow machine, and moving numbers are against MASTER.md §5.
+
+## D-53 — Match screen: what Accept moves, how Undo works, and the fixed-height shell
+- **Decision:**
+  - *Accept* allocates `min(credit still unmatched, invoice outstanding)`, with `method = "suggested"` when the
+    matcher proposed that invoice and `"manual"` otherwise. Whatever is left of the credit stays in the queue.
+  - *Allocate part…* (and **M**) opens a dialog with a ₦ amount, parsed to kobo from the text
+    (`parseNairaToKobo`, never a float). With no candidate selected it searches open invoices instead.
+  - *Undo* in the toast calls `POST /allocations/{id}/reverse`: a real reversal with an audit row, not a hidden
+    client-side step. *Not this one* calls `/reconciliation/reject` (D-28).
+  - After every action the screen re-asks the API (SWR `mutate` of the queue and the dashboard summary), so it
+    never shows a number the database didn't produce. The resolved row fades for 200ms (`motion-safe`).
+  - The signed-in shell is exactly one screen tall (`h-svh`); each screen scrolls inside itself, so Match's two
+    panes scroll independently and the rail never scrolls away.
+- **Why:** all money movement stays in `allocate()` on the server (invariant 4) and every manual action stays
+  audited (invariant 7); the client limits are only quick feedback, the server re-checks under a lock.
