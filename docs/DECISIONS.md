@@ -390,3 +390,16 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
   refresh-on-focus and `mutate()` for a few lines per screen.
 - **Cost:** any script injected into the page could read the token, so the UI never renders user data as raw HTML.
   `proxy.ts` (Next 16's renamed middleware) can't see `localStorage`, so it isn't used for auth.
+
+## D-52 — Overview: validated ageing colours, no chart animation, tiles never break an amount
+- **Decision:** ageing buckets use status colours checked with the dataviz palette validator (all pairs, both
+  themes): not yet due = slate (`#94a3b8` / dark `#64748b`, deliberately neutral), 1–30 days = amber
+  (`#f59e0b` / `#fbbf24`), 31–60 = red (`#ef4444` / `#f87171`), 60+ = dark red (`#991b1b` / `#b91c1c`).
+  Every bucket also shows its name and ₦ amount as text. The collections chart has no grow-in animation and a
+  value-first tooltip plus a "View as table" fallback. KPI tiles are one column on phones, 2×2 up to 1280px,
+  four in a row above that, and amounts never wrap.
+- **Why:** orange next to red failed the normal-vision check (ΔE 8.7 < 15), and red-400 next to red-600 failed in
+  dark mode (14.3), so the steps were re-chosen until both themes passed. Money is shown to the kobo (MASTER.md
+  §8), so on a 375px phone a 2×2 grid split "₦437,500.00" across two lines; one column keeps it whole (a small,
+  deliberate change from pages/dashboard.md's "2×2 below 768px"). Recharts' default animation left the columns
+  at zero height on a slow machine, and moving numbers are against MASTER.md §5.
