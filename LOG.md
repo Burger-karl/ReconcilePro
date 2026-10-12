@@ -118,3 +118,21 @@ Template (copy per day):
   - The seed showed PyJWT warning that my local `backend/.env` JWT_SECRET is only 9 bytes. Fine for development, but production would refuse it (D-43).
 - **Learned:** Run the palette validator instead of trusting your eye: two "obviously different" reds weren't. Showing money to the kobo is a layout constraint, not just a formatting rule. A single-series chart needs no legend; the title names it.
 - **Next:** Commit F2. Then F3, the Match board: unmatched credits beside candidate invoices, scores with reasons, and accept / allocate part / not this one from the keyboard.
+
+### Day 7 (continued): F3 Match payments
+- **Built:** Committed and merged F2. On `feat/frontend-match`:
+  - The Match screen from pages/reconciliation.md. Left pane: payments with money still unmatched (payer, amount, narration in mono, a 2px navy border on the selected one). Right pane: the payment in full, then up to three candidate cards.
+  - Each card has the invoice number, status badge, "Suggested" tag, an Amount/Name/Date score bar with points written out, plain-English reasons with the two amounts beside them, and Accept / Allocate part… / Not this one.
+  - Keyboard: J/K next/previous, 1–3 choose a card, A accept, M allocate, R not this one, ? shortcuts.
+  - Allocate dialog: ₦ amount parsed to kobo, limited to what both sides allow; with no card selected it searches open invoices.
+  - Toast with Undo, which does a real reversal through the API. "All caught up" empty state. On phones: one pane at a time with a Back button.
+  - The app shell is now one screen tall and each screen scrolls on its own (D-53).
+- **Checked (Chrome, seeded data):**
+  - A accepted Ngozi's suggestion: toast, row faded out, next payment selected, rail badge 2 → 1.
+  - Undo sent `POST /allocations/{id}/reverse` (200) and the payment came back.
+  - M on the unknown payer opened the invoice search. ₦60,000 was refused ("up to ₦50,000.00"). ₦20,000.50 to INV-0004 left exactly ₦29,999.50.
+  - R hid INV-0006 for that payment.
+  - The "?" sheet opens. The phone layout swaps panes with no sideways scroll. Overview still scrolls in the new shell.
+- **Broke:** The keyboard handler called `.closest()` on the event target, which throws when the target is the window, so I now check it's an element first. The browser tool sent "/" instead of "?". On this slow machine Chrome sometimes paused CSS animations, so a closed dialog stayed in the page until the next frame was drawn (a browser quirk, not the app). Postgres timed out starting while a build was running.
+- **Learned:** The screen should never do money maths it then trusts. It sends the request, lets `allocate()` decide, and re-reads the queue. Showing the credit and outstanding amounts beside reasons that contain no money (D-29) makes the matcher's decision checkable at a glance.
+- **Next:** Commit F3. Then F4 Invoices: list with status filter, inspector with payments, create/edit draft, send, void.
