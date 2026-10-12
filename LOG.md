@@ -173,3 +173,18 @@ Template (copy per day):
 - **Broke:** `npx next start` couldn't find the project's Next.js and started downloading `next@16.4.0`. I stopped it straight away and now start it with `npm start` (the local 16.3.8). The Chrome extension was disconnected at first; I reconnected it.
 - **Learned:** Validate data where it is stored, not where it is used. An email typo would otherwise surface weeks later as a failed Paystack checkout. Pick the input shape from the data: bank names can contain commas, so one per line is safer than comma-separated.
 - **Next:** Commit F5. Then F6 Statements: CSV upload with the import summary, and the transactions list.
+
+### Day 7 (continued): F6 Statements
+- **Built:** Committed and merged F5. On `feat/frontend-statements`:
+  - Upload card: choose a CSV, Import, then a plain-English summary (read / new / skipped as duplicates / matched automatically / Paystack payouts / money-out ignored / need you) with a "Match N payments" button. API errors are shown with "nothing from this file was imported".
+  - Ledger of every bank and Paystack line with tabs (All, Unmatched, Part matched, Matched, Paystack payouts), status badges (Needs review amber, Matched green, Settlement slate) and paging.
+  - Inspector with the narration in mono, amount / matched / still to match, and "where the money went" (every allocation, reversed ones too, linking to the invoice). `/transactions/[id]` for phones.
+  - Decision D-56.
+- **Checked (Chrome, seeded data, full 1366px width this time):**
+  - Uploaded a 4-line CSV built in the page: 3 new, 1 matched to INV-0007 by its reference, 1 payout, 1 money-out ignored, 1 needs review.
+  - Uploaded the same file again: 0 new, 3 skipped. Invariant 2 is visible in the UI, and the ledger still had 9 lines.
+  - A file in an unknown format was refused with the supported headers listed, and nothing was added.
+  - The inspector showed INV-0007 "Matched automatically" ₦32,250.00. The tabs filter correctly. On a phone a row opens `/transactions/[id]` with no sideways scroll.
+- **Broke:** My first build was cut off by a 550-second time limit and left no output, so I reran it without one. The upload error ran two sentences together because the API's message has no full stop, so I add one. A Paystack payout's panel said "Still to match ₦9,000.00", which contradicts invariant 6, so payouts now show only their amount and an explanation.
+- **Learned:** Testing the upload with a file built in the page (DataTransfer) exercises the real input, change handler and FormData path without needing file access. The duplicate-safe import only builds trust if the UI says so ("already imported before, skipped").
+- **Next:** Commit F6. Then F7 Audit log, F8 public invoice page and Paystack return, F9 landing.
