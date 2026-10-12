@@ -451,3 +451,13 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 - **Why:** the import is all-or-nothing and duplicate-safe on the server (D-20, invariant 2); the screen has to
   make that visible ("3 already imported before (skipped)") so an accountant trusts re-importing an overlapping
   export. Showing "still to match" for a settlement would contradict invariant 6.
+
+## D-57 — Audit log screen: read-only, plain sentences, every recorded detail
+- **Decision:** `/audit` lists the workspace's events newest first (50 a page, "Newer"/"Older"), filterable by
+  what changed (invoice, allocation, transaction, customer, statement, user). Each row is a sentence from
+  `describeEvent()`; selecting it shows who, the exact time, the raw action name, every recorded detail
+  (`eventDetails()`: `_kobo` values as ₦, edits as "from → to", ids hidden) and links to the invoice, customer
+  or bank line (`eventLinks()`). Inspector on wide screens, details under the row on phones. No actions.
+- **Why:** invariant 7 says every manual action is recorded and nothing is deleted; the page is where an
+  accountant (or examiner) checks that. Event data can contain what people typed (names, reasons), so it is
+  only ever rendered as text, never HTML.

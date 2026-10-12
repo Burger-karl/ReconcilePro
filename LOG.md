@@ -188,3 +188,18 @@ Template (copy per day):
 - **Broke:** My first build was cut off by a 550-second time limit and left no output, so I reran it without one. The upload error ran two sentences together because the API's message has no full stop, so I add one. A Paystack payout's panel said "Still to match ₦9,000.00", which contradicts invariant 6, so payouts now show only their amount and an explanation.
 - **Learned:** Testing the upload with a file built in the page (DataTransfer) exercises the real input, change handler and FormData path without needing file access. The duplicate-safe import only builds trust if the UI says so ("already imported before, skipped").
 - **Next:** Commit F6. Then F7 Audit log, F8 public invoice page and Paystack return, F9 landing.
+
+### Day 7 (continued): F7 Audit log
+- **Built:** Committed and merged F6. On `feat/frontend-audit`:
+  - `/audit` lists every event newest first as a sentence, with who, when and amount; 50 a page with Newer/Older.
+  - Filter tabs: All, Invoices, Payments, Bank lines, Customers, Imports, Sign-in & security.
+  - Selecting an event shows who, the exact time, the raw action, every recorded detail (₦ for `_kobo`, "from → to" for edits) and links to the invoice, customer or bank line. Inspector on wide screens, details under the row on phones.
+  - `lib/audit-text.ts` gained `eventDetails()` and `eventLinks()`. Decision D-57.
+- **Checked (Chrome, seeded data plus a customer edit, a reversal, a draft edit and a void made through the API):**
+  - The list shows "Invoice INV-0008 voided", "Payment match reversed ₦100,000.00", "System" for automatic matches.
+  - Details: "Subtotal ₦15,000.00 → ₦20,000.00"; "Phone none → 08031234567" and the bank names before → after; the reversal reason with links to the invoice and the bank line.
+  - The Payments tab shows only payment events; Sign-in & security shows its empty state; "Open invoice" opened INV-0002.
+  - On a phone the details open under the row with no sideways scroll. Lint and build pass.
+- **Broke:** Nothing new. Screenshots still time out now and then on this machine, so I read the page with JavaScript.
+- **Learned:** A draft edit records only the field that was sent (subtotal); VAT and total aren't listed because they are recomputed, not edited. An audit page is most useful when every row reads as a sentence and every detail as "before → after".
+- **Next:** Commit F7. Then F8: the public invoice page (`/i/[token]`, 375px phones) and the page Paystack returns to.
