@@ -475,3 +475,13 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 - **Gaps (data the API doesn't have yet):** no payment date ("payment received on …"), no business bank account
   number for the transfer instructions, and no way to know in advance that a customer has no email (the button
   shows the API's "pay by bank transfer" message instead).
+
+## D-59 — Landing page: static server component, honest claims, one action
+- **Decision:** `/` is the `(marketing)` landing page (MASTER.md §7): a one-line promise with a real-looking
+  matched-payment card built from the app's own components, "How it works" in three steps, three trust points,
+  and "Create free workspace" (44px buttons). It is a server component (prerendered as static HTML); only the
+  header's AuthNav runs in the browser, showing "Sign in / Create free workspace" to visitors and "Open app" to
+  someone signed in. The old redirect-only `app/page.tsx` is gone.
+- **Why:** static HTML loads fast and can be indexed; nothing on the page needs state. Each claim maps to a rule
+  the backend enforces (comments in the file name the invariant): kobo integers (1), duplicate-safe imports (2),
+  one payment per Paystack reference and no over-allocation (3, 4), reversals not deletes plus the audit log (7).

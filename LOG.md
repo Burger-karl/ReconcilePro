@@ -225,3 +225,23 @@ Template (copy per day):
   - `notFound()` isn't documented for client components, so the page shows its own "Invoice not found".
 - **Learned:** A redirect back from a payment provider is not proof of payment; only the verified webhook is. SWR's polling respects page visibility by default, which is right for dashboards but wrong for a short "waiting for payment" window. The spec asked for a payment date and bank details that the API doesn't have yet; I recorded them as gaps rather than inventing them.
 - **Next:** Commit F8. Then F9, the landing page.
+
+## Day 8 — 2026-10-13
+- **Built:** Committed and merged F8. F9 landing page on `feat/frontend-landing`:
+  - `/` is now the `(marketing)` landing page; the old redirect-only `app/page.tsx` is deleted.
+  - Hero: "Know which invoices are paid, without the spreadsheet." beside a real-looking matched-payment card built from the app's own components (score bar, reasons, StatusBadge).
+  - "How it works" in three steps, "Numbers you can stand behind" (kobo integers, never paid twice, nothing disappears), and a final "Create free workspace".
+  - A server component, prerendered as static HTML. Only `AuthNav` runs in the browser: "Sign in / Create free workspace" for visitors, "Open app" for someone signed in. Each claim's comment names the backend invariant that makes it true. Decision D-59.
+- **Checked:**
+  - The served HTML contains the title, description and all sections before any JavaScript runs.
+  - Header: signed out → "Sign in | Create free workspace"; signed in → "Open app".
+  - 375px: no sideways scroll, h1 36px, the preview card fits (328px).
+  - Screenshots in light and dark both read well.
+  - The call-to-action buttons were only 36px (this shadcn style's `lg`), so I made them 44px and confirmed the class in the served page and the built CSS.
+- **Broke:**
+  - Chrome reported the tab as hidden, so screenshots timed out until you brought the window to the front.
+  - Later Chrome stopped responding altogether and my tab group dropped out twice, so I verified the last change from the served HTML instead of retrying the browser.
+  - My seed script once read the wrong task file and tried your own Postgres on port 5432. It was refused and nothing was written; I now read the Postgres task's own output file.
+  - Clearing stale `.next/types` was needed again after deleting a page.
+- **Learned:** A landing page with no state should be a server component: faster, and indexable. Writing each marketing claim next to the rule that guarantees it keeps the copy honest and gives a ready viva answer.
+- **Next:** Commit F9. All nine frontend slices are then done. Left: emailing invoices (Resend, "feature 7"), the API gaps noted in D-58 (payment date, business bank details), and deployment (Render + Vercel, with the D-43 checklist).
