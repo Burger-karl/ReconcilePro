@@ -34,7 +34,12 @@ export function describeEvent(event: AuditEvent): DescribedEvent {
     case "invoice.created":
       return { text: `Invoice ${invoice} created`, amountKobo: kobo(data.total_kobo) };
     case "invoice.sent":
-      return { text: `Invoice ${invoice} sent`, amountKobo: kobo(data.total_kobo) };
+      return {
+        text: str(data.emailed_to) ? `Invoice ${invoice} sent and emailed to ${data.emailed_to}` : `Invoice ${invoice} sent`,
+        amountKobo: kobo(data.total_kobo),
+      };
+    case "invoice.emailed":
+      return { text: `Invoice ${invoice} emailed to ${str(data.emailed_to) ?? "the customer"}`, amountKobo: null };
     case "invoice.updated":
       return { text: "Draft invoice edited", amountKobo: null };
     case "invoice.voided":

@@ -39,6 +39,9 @@ def ok(response, expected: int = 200) -> dict:
 def main() -> None:
     if settings.environment != "development":
         sys.exit("Refusing to seed: set ENVIRONMENT=development (this script creates a known demo password).")
+    # Sending a seeded invoice emails its customer (D-60). The demo addresses are made up, so never really
+    # send: with no Resend key, send_email() only logs the message. This changes this run only, not .env.
+    settings.resend_api_key = ""
 
     client = TestClient(app)
     existing = client.post(f"{API}/auth/login", json={"email": EMAIL, "password": PASSWORD})

@@ -245,3 +245,16 @@ Template (copy per day):
   - Clearing stale `.next/types` was needed again after deleting a page.
 - **Learned:** A landing page with no state should be a server component: faster, and indexable. Writing each marketing claim next to the rule that guarantees it keeps the copy honest and gives a ready viva answer.
 - **Next:** Commit F9. All nine frontend slices are then done. Left: emailing invoices (Resend, "feature 7"), the API gaps noted in D-58 (payment date, business bank details), and deployment (Render + Vercel, with the D-43 checklist).
+
+### Day 8 (continued): invoice email
+- **Built:** Committed and merged F9. On `feat/invoice-email`, test-first (10 new tests failed, then passed; 388 backend tests pass):
+  - Sending an invoice emails the payment link when the customer has an email. The response gains `emailed_to`, and `invoice.sent` records it.
+  - `POST /invoices/{id}/email` sends it again, only while money is owed; a customer with no email gets a 409. Audited as `invoice.emailed`.
+  - The email has the business, number, amount owed (`format_naira`, integer kobo), due date, the `/i/{token}` link and the transfer reference.
+  - Frontend: the send toast says where it was emailed; an "Email to customer" button on open invoices; the audit text describes the new events. API.md and D-60 updated.
+- **Checked:** Through the running API: send → `emailed_to: bisi@bisistores.ng`; email again → 202; no email → 409 with the message. The logged email reads correctly. Frontend typecheck and lint pass. Click-through in Chrome on seeded data: "Email to customer" toast names the address; a customer with no email gets the 409 message as an error toast; sending a draft says "sent and emailed to ..."; the Audit log shows both events. Production build passes with `next build --webpack`.
+- **Broke:** A Python heredoc turned the email's `\n` escapes into real line breaks, which broke the f-strings; fixed by editing the file directly. The Windows console prints "₦" as `₦` in the log (display only).
+  - `npm run build` (Turbopack) failed three times with `0xc0000142`: Windows could not start Turbopack's Node worker processes (low memory, 1.3 GB free). The webpack build of the same code passed, so it is the machine, not the code.
+  - `seed.py` now sends invoices, so it called Resend for made-up demo addresses. Resend refused my local key (401), so nothing went out. Fixed: the seed blanks the Resend key for its own run, so emails are only logged.
+- **Learned:** My local `RESEND_API_KEY` is rejected by Resend (401). Delivery failures are only logged (D-60), so the app still says "emailed". I need a valid key before the demo.
+- **Next:** Commit and merge `feat/invoice-email`. Then the D-58 gaps (payment date, bank details) and deployment.
