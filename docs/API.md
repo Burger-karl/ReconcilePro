@@ -44,7 +44,8 @@ Linking Google to a password account removes the password and ends its sessions 
 | POST | `/api/v1/invoices` | `customer_id, description, subtotal_kobo, issue_date, due_date` | invoice (draft) | server computes `vat_kobo`, `total_kobo`, `number`, `reference` (D-02) |
 | GET | `/api/v1/invoices/{id}` | — | invoice + `payments[]` | every allocation to it (reversed ones too, with `reversal_reason`) and the bank line each came from: `id` (allocation), `transaction_id`, `source`, `value_date`, `narration`, `amount_kobo`, `method`, `created_at`, `reversed_at` |
 | PATCH | `/api/v1/invoices/{id}` | fields above | invoice | only while `draft` (else 409); VAT and total recomputed |
-| POST | `/api/v1/invoices/{id}/send` | — | invoice | `draft → sent`, sets `sent_at`, `public_token`; 409 if not draft. Email via Resend in feature 7 |
+| POST | `/api/v1/invoices/{id}/send` | — | invoice + `emailed_to` | `draft → sent`, sets `sent_at`, `public_token`; 409 if not draft. If the customer has an email, the payment link is emailed in a background task (D-60); `emailed_to` is that address or `null` |
+| POST | `/api/v1/invoices/{id}/email` | — | 202 `{emailed_to}` | emails the payment link again to the customer's current email; 409 unless sent / part_paid / overdue, or if the customer has no email. Audit `invoice.emailed` |
 | POST | `/api/v1/invoices/{id}/void` | `reason` (required) | invoice | 409 if already void or if it has non-reversed allocations |
 
 ## public — `app/invoices/public_router.py`

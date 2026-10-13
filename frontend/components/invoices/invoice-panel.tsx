@@ -6,7 +6,7 @@
  * this panel shows them and offers only the actions the API allows in that status.
  */
 
-import { Check, Copy, Pencil, Send, Undo2 } from "lucide-react";
+import { Check, Copy, Mail, Pencil, Send, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import useSWR, { useSWRConfig } from "swr";
@@ -45,6 +45,7 @@ export function InvoicePanel({ invoiceId, onEdit }: { invoiceId: string; onEdit:
   const [voidOpen, setVoidOpen] = useState(false);
   const [reversing, setReversing] = useState<Payment | null>(null);
   const [copied, setCopied] = useState(false);
+  const [emailing, setEmailing] = useState(false);
 
   if (error) return <p className="p-5 text-sm text-muted-foreground">{error instanceof Error ? error.message : "Couldn't load this invoice."}</p>;
   if (!invoice) return <Skeleton className="m-5 h-96" />;
@@ -61,11 +62,30 @@ export function InvoicePanel({ invoiceId, onEdit }: { invoiceId: string; onEdit:
 
   async function send() {
     try {
-      await api(`${API}/invoices/${invoiceId}/send`, { method: "POST" });
-      toast.success(`${number} sent. Copy its payment link to share it with the customer.`);
+      // The API emails the payment link itself when the customer has an email (backend D-60).
+      const sent = await api<Schemas["SentInvoice"]>(`${API}/invoices/${invoiceId}/send`, { method: "POST" });
+      toast.success(
+        sent.emailed_to
+          ? `${number} sent and emailed to ${sent.emailed_to}.`
+          : `${number} sent. This customer has no email, so copy the payment link and share it yourself.`,
+      );
       await refresh();
     } catch (caught) {
       toast.error(caught instanceof ApiError ? caught.message : "Couldn't send the invoice.");
+    }
+  }
+
+  async function emailAgain() {
+    setEmailing(true);
+    try {
+      const result = await api<Schemas["EmailResult"]>(`${API}/invoices/${invoiceId}/email`, { method: "POST" });
+      toast.success(`Payment link emailed to ${result.emailed_to}.`);
+      await refresh();
+    } catch (caught) {
+      // e.g. 409 "This customer has no email address. Add one on the Customers page, or copy the payment link."
+      toast.error(caught instanceof ApiError ? caught.message : "Couldn't email the invoice.");
+    } finally {
+      setEmailing(false);
     }
   }
 
@@ -140,6 +160,12 @@ export function InvoicePanel({ invoiceId, onEdit }: { invoiceId: string; onEdit:
             {copied ? "Copied" : "Copy payment link"}
           </Button>
         )}
+        {OPEN.includes(status) && invoice.outstanding_kobo > 0 && (
+          <Button variant="outline" onClick={() => void emailAgain()} disabled={emailing}>
+            <Mail aria-hidden />
+            {emailing ? "Emailing…" : "Email to customer"}
+          </Button>
+        )}
         {(status === "draft" || OPEN.includes(status)) && (
           <Button
             variant="ghost"
@@ -196,7 +222,8 @@ export function InvoicePanel({ invoiceId, onEdit }: { invoiceId: string; onEdit:
           <AlertDialogHeader>
             <AlertDialogTitle>Send {invoice.number}?</AlertDialogTitle>
             <AlertDialogDescription>
-              It can&apos;t be edited after this. It gets a payment link you can share with {invoice.customer_name}.
+              It can&apos;t be edited after this. It gets a payment link, emailed to {invoice.customer_name} if they
+              have an email address on file.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

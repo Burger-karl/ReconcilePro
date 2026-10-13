@@ -100,6 +100,16 @@ class InvoiceDetail(InvoiceRead):
     payments: list[InvoicePayment]
 
 
+class SentInvoice(InvoiceRead):
+    """Answer to POST /invoices/{id}/send: the invoice, plus where its link was emailed (None = no email on file)."""
+
+    emailed_to: str | None
+
+
+class EmailResult(BaseModel):
+    emailed_to: str
+
+
 class InvoiceList(BaseModel):
     items: list[InvoiceRead]
     total: int

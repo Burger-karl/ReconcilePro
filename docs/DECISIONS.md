@@ -485,3 +485,16 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 - **Why:** static HTML loads fast and can be indexed; nothing on the page needs state. Each claim maps to a rule
   the backend enforces (comments in the file name the invariant): kobo integers (1), duplicate-safe imports (2),
   one payment per Paystack reference and no over-allocation (3, 4), reversals not deletes plus the audit log (7).
+
+## D-60 — Invoices are emailed when sent, and can be emailed again
+- **Decision:** `POST /invoices/{id}/send` builds an email (business name, number, amount still owed, due date,
+  the `/i/{token}` link, and the reference to quote for a bank transfer) when the customer has an email address,
+  and the router sends it as a background task through `email/service.py` (Resend). The response adds
+  `emailed_to` (or `null`), and the `invoice.sent` audit row records it. `POST /invoices/{id}/email` sends the
+  link again to the customer's current address, only while money is owed (sent / part_paid / overdue), and
+  writes `invoice.emailed`. Amounts in the email are formatted from integer kobo (`format_naira`).
+- **Why:** the customer needs the link to pay online, and sending it should not depend on the accountant copying
+  it. Background sending keeps a slow mail server off the request (same as D-39). Re-sending is limited to open
+  invoices so a paid or void invoice can't be "chased".
+- **Known limit:** a delivery failure is only logged (the response has already gone); the UI says "emailed to …"
+  meaning "handed to the mail service". Delivery status would need Resend webhooks, later.

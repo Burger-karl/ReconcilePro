@@ -7,6 +7,7 @@ Every change writes an audit event in the same commit (invariant 7).
 import secrets
 import uuid
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import date
 
 from sqlalchemy import func, or_
@@ -15,10 +16,19 @@ from sqlmodel import Session, select
 from app.allocations import service as allocations
 from app.audit.service import record
 from app.auth.models import User, Workspace
+from app.core.config import settings
 from app.core.time import lagos_today, utc_now
 from app.customers.models import Customer
 from app.invoices.models import Invoice
-from app.invoices.schemas import InvoiceCreate, InvoiceDetail, InvoicePayment, InvoiceRead, InvoiceUpdate, PublicInvoice
+from app.invoices.schemas import (
+    InvoiceCreate,
+    InvoiceDetail,
+    InvoicePayment,
+    InvoiceRead,
+    InvoiceUpdate,
+    PublicInvoice,
+    SentInvoice,
+)
 
 __all__ = ["lagos_today"]  # re-exported for tests and other features: "today" always means Lagos today
 
@@ -326,8 +336,50 @@ def update_invoice(session: Session, user: User, invoice_id: uuid.UUID, data: In
     return _read_one(session, invoice)
 
 
-def send_invoice(session: Session, user: User, invoice_id: uuid.UUID) -> InvoiceRead:
-    """draft -> sent. Creates the public link token. (Emailing the customer comes in feature 7.)"""
+# --- emailing the customer (DECISIONS D-60) -------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class InvoiceEmail:
+    """One email ready to send. Built here, sent by the router as a background task (app/email/service.py)."""
+
+    to: str
+    subject: str
+    text: str
+
+
+def format_naira(kobo: int) -> str:
+    """9675000 -> "₦96,750.00", with integer maths only (invariant 1). Only for text that leaves the system."""
+    return f"₦{kobo // 100:,}.{kobo % 100:02d}"
+
+
+def _invoice_email(session: Session, invoice: Invoice) -> InvoiceEmail | None:
+    """The payment-link email for a sent invoice, or None when the customer has no email address.
+
+    Reads the customer's CURRENT email, so a corrected address is used next time.
+    """
+    customer = session.get(Customer, invoice.customer_id)
+    if customer is None or not customer.email:
+        return None
+    business = session.get(Workspace, invoice.workspace_id)
+    owed = _read_one(session, invoice).outstanding_kobo
+    link = f"{settings.frontend_url}/i/{invoice.public_token}"
+    return InvoiceEmail(
+        to=customer.email,
+        subject=f"Invoice {invoice.number} from {business.name}",
+        text=(
+            f"Hello {customer.name},\n\n"
+            f"{business.name} has sent you invoice {invoice.number} for {invoice.description}.\n"
+            f"Amount due: {format_naira(owed)}, by {invoice.due_date.strftime('%d %B %Y')}.\n\n"
+            f"View and pay online:\n{link}\n\n"
+            f"Paying by bank transfer? Put this reference in the transfer description: {invoice.reference}\n\n"
+            f"Thank you,\n{business.name}"
+        ),
+    )
+
+
+def send_invoice(session: Session, user: User, invoice_id: uuid.UUID) -> tuple[SentInvoice, InvoiceEmail | None]:
+    """draft -> sent. Creates the public link token, and the email to send it with (None if no email on file)."""
     invoice = _get_invoice(session, user, invoice_id)
     if invoice.status != "draft":
         raise InvoiceConflict("Only draft invoices can be sent")
@@ -335,6 +387,7 @@ def send_invoice(session: Session, user: User, invoice_id: uuid.UUID) -> Invoice
     invoice.sent_at = utc_now()
     # 32 random bytes -> 43 URL-safe characters: impossible to guess, safe in a URL.
     invoice.public_token = secrets.token_urlsafe(32)
+    email = _invoice_email(session, invoice)
     record(
         session,
         workspace_id=user.workspace_id,
@@ -342,11 +395,36 @@ def send_invoice(session: Session, user: User, invoice_id: uuid.UUID) -> Invoice
         action="invoice.sent",
         entity_type="invoice",
         entity_id=invoice.id,
-        data={"number": invoice.number, "total_kobo": invoice.total_kobo},
+        data={"number": invoice.number, "total_kobo": invoice.total_kobo, "emailed_to": email.to if email else None},
     )
     session.add(invoice)
     session.commit()
-    return _read_one(session, invoice)
+    sent = SentInvoice(**_read_one(session, invoice).model_dump(), emailed_to=email.to if email else None)
+    return sent, email
+
+
+def email_invoice(session: Session, user: User, invoice_id: uuid.UUID) -> InvoiceEmail:
+    """Email the payment link again. Only while money is still owed, and only to a customer with an email."""
+    invoice = _get_invoice(session, user, invoice_id)
+    status = _read_one(session, invoice).status
+    if status not in OPEN_STATUSES:
+        raise InvoiceConflict(f"This invoice is {status.replace('_', ' ')}: only invoices with money owed can be emailed")
+    email = _invoice_email(session, invoice)
+    if email is None:
+        raise InvoiceConflict(
+            "This customer has no email address. Add one on the Customers page, or copy the payment link."
+        )
+    record(
+        session,
+        workspace_id=user.workspace_id,
+        actor_user_id=user.id,
+        action="invoice.emailed",
+        entity_type="invoice",
+        entity_id=invoice.id,
+        data={"number": invoice.number, "emailed_to": email.to},
+    )
+    session.commit()
+    return email
 
 
 def void_invoice(session: Session, user: User, invoice_id: uuid.UUID, reason: str) -> InvoiceRead:

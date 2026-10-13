@@ -212,6 +212,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/invoices/{invoice_id}/email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email Invoice
+         * @description Email the payment link to the customer again (open invoices only; 409 otherwise).
+         */
+        post: operations["email_invoice_api_v1_invoices__invoice_id__email_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/invoices/{invoice_id}/void": {
         parameters: {
             query?: never;
@@ -738,6 +758,11 @@ export interface components {
             /** Aliases */
             aliases?: string[] | null;
         };
+        /** EmailResult */
+        EmailResult: {
+            /** Emailed To */
+            emailed_to: string;
+        };
         /** ForgotPasswordRequest */
         ForgotPasswordRequest: {
             /**
@@ -1095,6 +1120,66 @@ export interface components {
         ReverseRequest: {
             /** Reason */
             reason: string;
+        };
+        /**
+         * SentInvoice
+         * @description Answer to POST /invoices/{id}/send: the invoice, plus where its link was emailed (None = no email on file).
+         */
+        SentInvoice: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Description */
+            description: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "sent" | "part_paid" | "paid" | "overdue" | "void";
+            /**
+             * Issue Date
+             * Format: date
+             */
+            issue_date: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /** Sent At */
+            sent_at: string | null;
+            /** Subtotal Kobo */
+            subtotal_kobo: number;
+            /** Vat Kobo */
+            vat_kobo: number;
+            /** Total Kobo */
+            total_kobo: number;
+            /** Paid Kobo */
+            paid_kobo: number;
+            /** Outstanding Kobo */
+            outstanding_kobo: number;
+            /** Public Token */
+            public_token: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Emailed To */
+            emailed_to: string | null;
         };
         /** Summary */
         Summary: {
@@ -1772,7 +1857,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InvoiceRead"];
+                    "application/json": components["schemas"]["SentInvoice"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    email_invoice_api_v1_invoices__invoice_id__email_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailResult"];
                 };
             };
             /** @description Validation Error */
