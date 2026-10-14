@@ -29,6 +29,7 @@ const TABS = [
   { type: "customer", label: "Customers" },
   { type: "statement", label: "Imports" },
   { type: "user", label: "Sign-in & security" },
+  { type: "workspace", label: "Settings" },
 ] as const;
 const PAGE = 50;
 

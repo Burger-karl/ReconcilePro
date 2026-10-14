@@ -18,6 +18,12 @@ class Workspace(SQLModel, table=True):
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     name: str = Field(max_length=200)
+    # Where customers send bank transfers, shown on every public invoice (D-61). All three are set together
+    # by the owner (PUT /workspace/bank-details); None until then. The account number is a 10-digit NUBAN,
+    # kept as text because it can start with 0.
+    bank_name: str | None = Field(default=None, max_length=100)
+    bank_account_number: str | None = Field(default=None, max_length=10)
+    bank_account_name: str | None = Field(default=None, max_length=200)
     # timestamptz: store the moment in UTC, show it in local time in the UI.
     created_at: datetime = Field(default_factory=utc_now, sa_column=Column(DateTime(timezone=True), nullable=False))
 

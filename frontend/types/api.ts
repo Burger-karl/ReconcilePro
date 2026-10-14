@@ -510,6 +510,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspace/bank-details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save Bank Details
+         * @description Owner only (403 for a member): where customers pay by transfer, shown on every public invoice.
+         */
+        put: operations["save_bank_details_api_v1_workspace_bank_details_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -640,6 +660,18 @@ export interface components {
         AutoMatchResult: {
             /** Auto Allocated */
             auto_allocated: number;
+        };
+        /**
+         * BankDetails
+         * @description The account customers pay into by bank transfer (D-61). All three fields are required together.
+         */
+        BankDetails: {
+            /** Bank Name */
+            bank_name: string;
+            /** Bank Account Number */
+            bank_account_number: string;
+            /** Bank Account Name */
+            bank_account_name: string;
         };
         /** Body_import_statement_api_v1_statements_import_post */
         Body_import_statement_api_v1_statements_import_post: {
@@ -1068,6 +1100,14 @@ export interface components {
             paid_kobo: number;
             /** Outstanding Kobo */
             outstanding_kobo: number;
+            /** Last Paid On */
+            last_paid_on: string | null;
+            /** Bank Name */
+            bank_name: string | null;
+            /** Bank Account Number */
+            bank_account_number: string | null;
+            /** Bank Account Name */
+            bank_account_name: string | null;
         };
         /** Queue */
         Queue: {
@@ -1348,6 +1388,12 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /** Bank Name */
+            bank_name: string | null;
+            /** Bank Account Number */
+            bank_account_number: string | null;
+            /** Bank Account Name */
+            bank_account_name: string | null;
         };
     };
     responses: never;
@@ -2362,6 +2408,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditEventList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_bank_details_api_v1_workspace_bank_details_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BankDetails"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceRead"];
                 };
             };
             /** @description Validation Error */

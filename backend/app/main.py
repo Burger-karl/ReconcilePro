@@ -22,6 +22,7 @@ from app.paystack.router import router as paystack_router
 from app.reconciliation.router import router as reconciliation_router
 from app.statements.router import router as statements_router
 from app.transactions.router import router as transactions_router
+from app.workspaces.router import router as workspaces_router
 
 # Every feature route lives under /api/v1 (DECISIONS D-36). The version is added here, in one place:
 # each router only knows its own path (e.g. "/invoices"). A breaking change later would get a v2
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(paystack_router, prefix=API_V1_PREFIX)
     app.include_router(dashboard_router, prefix=API_V1_PREFIX)
     app.include_router(audit_router, prefix=API_V1_PREFIX)
+    app.include_router(workspaces_router, prefix=API_V1_PREFIX)
 
     app.add_api_route("/api/health", health, methods=["GET"])
     return app

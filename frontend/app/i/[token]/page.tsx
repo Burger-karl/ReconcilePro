@@ -8,6 +8,8 @@
  * (backend D-34) and sends the customer there. Paystack then sends them back here with ?reference=... in the
  * URL. That URL proves nothing (anyone can type it), so this page never says "paid" because of it: it shows
  * "confirming" and re-asks the API until the Paystack webhook has recorded the money (backend D-30).
+ *
+ * Look (D-62): teal line on top of the card, light teal wash behind it, the card fades up, the paid tick pops in.
  */
 
 import { Check, CircleAlert, Copy, Loader2 } from "lucide-react";
@@ -50,7 +52,8 @@ function InvoiceView() {
   const [windowOver, setWindowOver] = useState(false);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  // Which value was just copied ("reference" or "account"), so only that button shows a tick.
+  const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
     if (!returnedFromPaystack) return;
@@ -83,11 +86,11 @@ function InvoiceView() {
     }
   }
 
-  async function copyReference(reference: string) {
-    await navigator.clipboard.writeText(reference);
-    setCopied(true);
-    toast.success("Reference copied");
-    setTimeout(() => setCopied(false), 2000);
+  async function copy(what: "reference" | "account", value: string) {
+    await navigator.clipboard.writeText(value);
+    setCopied(what);
+    toast.success(what === "reference" ? "Reference copied" : "Account number copied");
+    setTimeout(() => setCopied(null), 2000);
   }
 
   if (error) {
@@ -107,9 +110,10 @@ function InvoiceView() {
   const status = invoice.status as InvoiceStatus;
   const open = OPEN.includes(status) && invoice.outstanding_kobo > 0;
   const confirming = returnedFromPaystack && open && !windowOver;
+  const account = invoice.bank_account_number; // null until the business saves its bank details
 
   return (
-    <article className="flex flex-col gap-6 rounded-xl border bg-card p-6 shadow-sm sm:p-8">
+    <article className="animate-rise flex flex-col gap-6 rounded-xl border border-t-4 border-t-primary bg-card p-6 shadow-lg sm:p-8">
       <header className="flex flex-col gap-2">
         <p className="text-sm text-muted-foreground">Invoice from</p>
         <h1 className="text-xl font-semibold">{invoice.business_name}</h1>
@@ -156,8 +160,9 @@ function InvoiceView() {
 
       {status === "paid" && (
         <p className="flex items-center gap-2 rounded-lg bg-green-50 p-4 text-sm font-medium text-green-700">
-          <Check className="size-5 shrink-0" aria-hidden />
-          Thank you — payment received.
+          <Check className="animate-pop size-5 shrink-0" aria-hidden />
+          {/* last_paid_on: the day the latest payment reached the business's account (backend D-61). */}
+          Thank you — payment received{invoice.last_paid_on ? ` on ${asDate(invoice.last_paid_on)}` : ""}.
         </p>
       )}
 
@@ -193,6 +198,31 @@ function InvoiceView() {
       {open && (
         <section className="flex flex-col gap-2 rounded-lg border bg-canvas p-4">
           <h2 className="text-sm font-medium">Or pay by bank transfer</h2>
+          {/* The business's account, saved by its owner in Settings (backend D-61). Until then the customer
+              is told to ask, rather than shown nothing and left guessing. */}
+          {account ? (
+            <div className="flex flex-col gap-1">
+              <p className="text-sm">
+                {invoice.bank_name} · {invoice.bank_account_name}
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="flex-1 rounded-md border bg-background px-3 py-2 font-mono text-lg tracking-wider">
+                  {account}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-11"
+                  aria-label="Copy account number"
+                  onClick={() => void copy("account", account)}
+                >
+                  {copied === "account" ? <Check className="animate-pop" aria-hidden /> : <Copy aria-hidden />}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Ask {invoice.business_name} for their account details.</p>
+          )}
           <p className="text-sm text-muted-foreground">
             Put this reference in the transfer description so your payment is matched to this invoice straight away.
           </p>
@@ -205,9 +235,9 @@ function InvoiceView() {
               size="icon"
               className="size-11"
               aria-label="Copy payment reference"
-              onClick={() => void copyReference(invoice.reference)}
+              onClick={() => void copy("reference", invoice.reference)}
             >
-              {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
+              {copied === "reference" ? <Check className="animate-pop" aria-hidden /> : <Copy aria-hidden />}
             </Button>
           </div>
         </section>
@@ -218,7 +248,7 @@ function InvoiceView() {
 
 export default function PublicInvoicePage() {
   return (
-    <main className="flex flex-1 flex-col items-center bg-canvas px-4 py-8 sm:py-12">
+    <main className="flex flex-1 flex-col items-center bg-linear-to-b from-brand-soft to-canvas px-4 py-8 sm:py-12">
       <div className="flex w-full max-w-xl flex-col gap-6">
         {/* useSearchParams() needs a Suspense boundary (Next 16 docs). */}
         <Suspense fallback={<Skeleton className="h-[560px] w-full rounded-xl" />}>

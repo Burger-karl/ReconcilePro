@@ -16,6 +16,7 @@ export function TextField<T extends FieldValues>({
   type = "text",
   autoComplete,
   description,
+  inputMode,
 }: {
   control: Control<T>;
   name: Path<T>;
@@ -23,6 +24,8 @@ export function TextField<T extends FieldValues>({
   type?: "text" | "email" | "password" | "date";
   autoComplete?: string;
   description?: string;
+  /** Which on-screen keyboard phones show, e.g. "numeric" for an account number. */
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
 }) {
   return (
     <Controller
@@ -37,6 +40,7 @@ export function TextField<T extends FieldValues>({
             id={name}
             type={type}
             autoComplete={autoComplete}
+            inputMode={inputMode}
             aria-invalid={fieldState.invalid}
             className="text-base"
           />

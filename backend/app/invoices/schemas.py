@@ -131,3 +131,9 @@ class PublicInvoice(BaseModel):
     total_kobo: int
     paid_kobo: int
     outstanding_kobo: int
+    # Value date of the latest non-reversed payment ("payment received on ..."); None if nothing is paid (D-61).
+    last_paid_on: date | None
+    # The business's account for bank transfers; all None until the owner saves one (D-61).
+    bank_name: str | None
+    bank_account_number: str | None
+    bank_account_name: str | None

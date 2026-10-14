@@ -53,7 +53,10 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 def require_owner(user: CurrentUser) -> User:
-    """For owner-only actions (e.g. inviting members, later)."""
+    """For owner-only actions, e.g. changing the bank account customers pay into (D-61)."""
     if user.role != "owner":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the workspace owner can do this")
     return user
+
+
+OwnerUser = Annotated[User, Depends(require_owner)]

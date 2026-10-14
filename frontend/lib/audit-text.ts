@@ -57,6 +57,12 @@ export function describeEvent(event: AuditEvent): DescribedEvent {
     }
     case "match.rejected":
       return { text: "Suggested match rejected", amountKobo: null };
+    case "workspace.bank_details_updated": {
+      // data.after = the account customers now pay into (backend D-61); show which, as it matters for fraud.
+      const after = (data.after ?? {}) as Record<string, unknown>;
+      const account = [str(after.bank_name), str(after.bank_account_number)].filter(Boolean).join(" ");
+      return { text: account ? `Bank details changed to ${account}` : "Bank details changed", amountKobo: null };
+    }
     case "user.google_linked":
       return { text: "Google sign-in linked", amountKobo: null };
     case "user.password_reset_requested":

@@ -54,6 +54,11 @@ def main() -> None:
     )["access_token"]
     client.headers["Authorization"] = f"Bearer {token}"
 
+    # Shown on every public invoice for paying by transfer (D-61). A made-up account for the demo.
+    ok(client.put(f"{API}/workspace/bank-details", json={
+        "bank_name": "GTBank", "bank_account_number": "0123456789", "bank_account_name": "Adaeze Foods Ltd",
+    }))
+
     # --- customers (aliases = the names they appear under on bank statements) -------------------------
     customers = {}
     for name, aliases, email in [
