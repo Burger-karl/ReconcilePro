@@ -16,12 +16,15 @@ export function AuthCard({
   footer?: React.ReactNode;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-xl">{title}</CardTitle>
+    // A thin teal-to-cyan line across the top ties the card to the brand (D-62, D-64).
+    // "stagger" (globals.css): the Google button, the form fields and the button fade up one after another.
+    <Card className="relative overflow-hidden rounded-2xl shadow-xl shadow-slate-900/5">
+      <span className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-teal-500 via-cyan-400 to-teal-500" aria-hidden />
+      <CardHeader className="pt-2">
+        <CardTitle className="text-2xl tracking-tight">{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
-      <CardContent className="flex flex-col gap-5">{children}</CardContent>
+      <CardContent className="stagger flex flex-col gap-5">{children}</CardContent>
       {footer && <CardFooter className="justify-center text-sm text-muted-foreground">{footer}</CardFooter>}
     </Card>
   );

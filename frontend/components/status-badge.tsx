@@ -24,7 +24,8 @@ const STYLES: Record<InvoiceStatus, { label: string; badge: string; dot: string 
   overdue: {
     label: "Overdue",
     badge: "bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-400",
-    dot: "bg-red-600 dark:bg-red-400",
+    // The only moving badge: a slow pulse draws the eye to money that is late (D-62). The word says it too.
+    dot: "bg-red-600 dark:bg-red-400 motion-safe:animate-pulse",
   },
   sent: {
     label: "Sent",

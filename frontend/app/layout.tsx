@@ -23,7 +23,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Reconcile",
+  title: "ReconcilePro",
   description: "Match bank credits and Paystack payments to invoices automatically.",
 };
 

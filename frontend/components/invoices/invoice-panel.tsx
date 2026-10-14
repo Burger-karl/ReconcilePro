@@ -156,7 +156,7 @@ export function InvoicePanel({ invoiceId, onEdit }: { invoiceId: string; onEdit:
         )}
         {link && (
           <Button variant="outline" onClick={() => void copyLink()}>
-            {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
+            {copied ? <Check className="animate-pop" aria-hidden /> : <Copy aria-hidden />}
             {copied ? "Copied" : "Copy payment link"}
           </Button>
         )}

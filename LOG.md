@@ -258,3 +258,50 @@ Template (copy per day):
   - `seed.py` now sends invoices, so it called Resend for made-up demo addresses. Resend refused my local key (401), so nothing went out. Fixed: the seed blanks the Resend key for its own run, so emails are only logged.
 - **Learned:** My local `RESEND_API_KEY` is rejected by Resend (401). Delivery failures are only logged (D-60), so the app still says "emailed". I need a valid key before the demo.
 - **Next:** Commit and merge `feat/invoice-email`. Then the D-58 gaps (payment date, bank details) and deployment.
+
+### Day 8 (continued): bank details and payment date on the public invoice
+- **Built:** Merged `feat/invoice-email`. On `feat/public-invoice-details`, test-first (18 new tests failed, then passed; 406 backend tests pass):
+  - Three nullable bank columns on `workspaces` (Alembic migration `b70d16d3c0f6`). The account number is text, because a 10-digit NUBAN can start with 0.
+  - `PUT /workspace/bank-details` in a new `app/workspaces/` feature: owner only (403 for a member), all three fields required, exactly 10 digits. Audited with the old and new account, because changing bank details is a classic invoice fraud.
+  - The public invoice API adds the bank fields and `last_paid_on` (value date of the latest non-reversed payment, from the allocations service).
+  - Frontend: a Settings screen (rail icon), the public page shows the account with a copy button and "payment received on …", and the audit log describes the change and has a Settings tab. The seed saves a demo account.
+- **Checked:** In Chrome on seeded data: the Settings form loads the saved account; "12345" shows "Nigerian account numbers are exactly 10 digits"; saving shows the toast; an open invoice page shows "GTBank · Adaeze Foods Ltd" and the new number; a paid invoice says "payment received on 9 October 2026"; the audit log shows both changes. Migration upgrade, downgrade and `alembic check` pass. Typecheck, lint and the webpack build pass. Not checked: the 375px layout (the browser window couldn't be resized from my tools).
+- **Learned:** Pydantic's `str_strip_whitespace` strips before the length and pattern checks, so "  " fails `min_length` and " 0123456789 " passes.
+- **Next:** Commit and merge. Maybe put the bank account in the invoice email too (it still only has the link and the reference). Then deployment.
+
+### Day 8 (continued): colour and motion (awaiting my sign-off)
+- **Built:** The UI felt too plain, so I picked a teal + navy brand and "lively but calm" motion (D-62). Teal buttons, focus rings and charts; navy rail with a teal active item; a soft teal wash on page headers, the auth pages, the public invoice and the landing hero; a teal band to close the landing page. CSS-only motion in `globals.css`: screens and cards fade up in order, table rows fade in one after another, ageing bars grow, success ticks pop, linked cards lift on hover, overdue dots pulse, and the Overview figures count up (`lib/use-count-up.ts`).
+- **Checked:** Typecheck, lint and the webpack build pass. In Chrome (via JavaScript): button, rail, header wash, chart and band colours are the new teal in both themes; no sideways scroll on the landing page; the Overview figures end exactly on the API's numbers (₦437,500.00, ₦80,625.00, 67%, 2).
+- **Broke:** In a background tab the figures sat at ₦0.00: browsers don't run `requestAnimationFrame` in hidden tabs. Fixed: no count there, the final figure shows straight away. White on teal-600 is only ~3.7:1, so buttons use teal-700 instead.
+- **Learned:** `sibling-index()` would make staggering rows one line of CSS, but Safari and Firefox don't support it yet, so I used `nth-child` delays.
+- **Next:** Get my sign-off on the look, then commit the bank-details work and this separately, merge, and deploy.
+
+### Day 8 (continued): modern landing page (awaiting my sign-off)
+- **Built:** A more modern landing page (D-63): sticky glass header, drifting teal glows over a dot grid, a pill badge, gradient headline, floating match and Paystack cards, a self-scrolling feature strip, numbered step cards, a bento trust grid with the kobo maths, and a dark call-to-action card with a teal glow. Sections fade up as they scroll into view, using CSS `animation-timeline: view()`, no JavaScript.
+- **Broke:** The first version froze the Chrome tab. Moving `blur-3xl` blobs, gradient text with an animated background, and glass blur on several cards are redrawn every frame, too much for this laptop. Fixed: radial-gradient glows that only translate, a static gradient, and glass blur on the header only. The tab then responded straight away and the page had no blur filters left.
+- **Learned:** Animating `transform` and `opacity` is cheap, because the browser just moves an existing layer. Animating a blurred element or a background position means repainting every frame. Also: a hidden Chrome window reports `clientWidth` 0, so I checked overflow by confirming every wide element sits inside an `overflow-hidden` parent.
+- **Next:** My sign-off, then commit the bank details, colour/motion and landing work, merge, and deploy.
+
+### Day 8 (continued): auth pages redesign (awaiting my sign-off)
+- **Built:** Split-screen sign-in pages (D-64). A navy brand panel on wide screens with drifting teal glows, a headline, three true points and a floating "matched automatically" card; the form on the right. `AuthCard` is rounder with a teal-to-cyan top line, and the Google button, fields and submit fade up one after another (`.stagger`). All four auth pages change, because they share the layout and card.
+- **Checked:** Typecheck, lint and the webpack build pass. The prerendered `/login` HTML has the brand panel, and the built CSS has the stagger rules. Not checked in the browser: Claude Code stopped the web server because memory was low.
+- **Learned:** The login form isn't in the prerendered HTML: `useSearchParams()` sits behind a Suspense boundary, so the browser renders that part.
+- **Next:** Look at it in the browser, then commit everything, merge, and deploy.
+
+### Day 8 (continued): "Create workspace" went to the dashboard
+- **Broke:** Clicking "Create free workspace" or "Sign in" took me to the dashboard. Not a routing bug: I was still signed in (the demo token from earlier browser checks), and login/register silently redirected signed-in users. The landing page still offered both buttons, so it looked broken.
+- **Fixed:** The landing buttons (`components/marketing/start-buttons.tsx`) say "Open your dashboard" when signed in. Login and register show "You're already signed in as … in …", with "Go to your dashboard" and "Sign out and use another account" (`components/auth/already-signed-in.tsx`), so a second business can still be registered. A `signingIn` flag stops that card flashing up between submitting the form and arriving at the dashboard.
+- **Checked in Chrome:** Signed in: `/register` shows the card, and all three landing buttons point to `/dashboard`. After "Sign out and use another account": the register form comes back, the token is gone, and the landing buttons go to `/register` and `/login` again. Typecheck, lint and the webpack build pass.
+
+### Day 9 — 2026-10-14
+- **Built:** My logo is in (D-65): cut into a mark, a full logo and the favicon/app icons with Pillow in a scratch venv, shown via `components/brand/logo.tsx` on the landing page, the auth pages and the app rail. The landing page got a 3D app preview that straightens as you scroll, a before/after, "follow one payment" with moving dots, a feature bento with a worked VAT/kobo example, tabs for owner/accountant/customer and an FAQ accordion (both added with the shadcn CLI). Cards lift and tilt on hover. I decided against DaisyUI: it clashes with shadcn's colour variables.
+- **Checked:** Typecheck, lint and the webpack build pass. The served landing page has every new section, `/icon.png` loads, and the demo login works.
+- **Broke:** Postgres wouldn't start after an unclean shutdown: a stale `postmaster.pid` named a dead process. I removed it and Postgres recovered with the data intact. Fixing the root title needed `sed` on line 26, not 25: my first edit hit the wrong line and changed nothing.
+- **Learned:** The wordmark has to be text, not the PNG: navy letters vanish in dark mode. An exact reference match has no score, so the landing page says "Exact match", not "100".
+- **Next:** My look at it in the browser, then commit everything, merge, and deploy.
+
+### Day 9 (continued): committed and merged
+- **Built:** Committed `feat/public-invoice-details` in two commits: the bank details and payment date (backend, Settings, public page), then the ReconcilePro brand, motion, landing, auth pages and logo. Merged into `main` with a merge commit, like the earlier features.
+- **Broke:** Claude Code stopped the web and API servers twice because the laptop ran low on memory. Nothing wrong with the apps; next time I run them in my own terminals.
+- **Learned:** Some files (`globals.css`, `DECISIONS.md`) hold several features' changes, so a perfectly clean one-feature-per-commit split would need hunk-by-hunk staging. I kept shared files in the second commit instead.
+- **Next:** Deploy: Render (API + DB) and Vercel (web). Production needs a strong `JWT_SECRET` (32+ bytes), the Paystack and Resend keys, `GOOGLE_CLIENT_ID`, `FRONTEND_URL`, and the Paystack webhook pointed at `/api/v1/webhooks/paystack`. Still to check: the 375px phone layout.

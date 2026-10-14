@@ -472,9 +472,9 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
   i.e. the verified webhook — says paid. The page is always light (`forcedTheme` for `/i/` paths).
 - **Why:** the return URL can be typed by anyone, so it proves nothing (backend D-30: only verify-transaction
   counts). Checking the redirect host keeps the page from becoming an open redirect even if a bad URL got in.
-- **Gaps (data the API doesn't have yet):** no payment date ("payment received on …"), no business bank account
-  number for the transfer instructions, and no way to know in advance that a customer has no email (the button
-  shows the API's "pay by bank transfer" message instead).
+- **Gaps (data the API doesn't have yet):** no way to know in advance that a customer has no email (the button
+  shows the API's "pay by bank transfer" message instead). The payment date and the business bank account were
+  also missing here; D-61 added both.
 
 ## D-59 — Landing page: static server component, honest claims, one action
 - **Decision:** `/` is the `(marketing)` landing page (MASTER.md §7): a one-line promise with a real-looking
@@ -498,3 +498,80 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
   invoices so a paid or void invoice can't be "chased".
 - **Known limit:** a delivery failure is only logged (the response has already gone); the UI says "emailed to …"
   meaning "handed to the mail service". Delivery status would need Resend webhooks, later.
+
+## D-61 — Business bank details and the payment date on the public invoice
+- **Decision:** `workspaces` gets three nullable columns: `bank_name`, `bank_account_number` (text, exactly 10
+  digits: a NUBAN can start with 0) and `bank_account_name`. The owner saves all three together with
+  `PUT /workspace/bank-details` (a new `app/workspaces/` feature; the table stays in `app/auth/models.py`) from a
+  new Settings screen. A member gets 403. Every save writes `workspace.bank_details_updated` with the old and new
+  account. `GET /public/invoices/{token}` adds the bank fields and `last_paid_on`: the value date of the latest
+  non-reversed payment, computed by `allocations.service.last_payment_date()` (the allocations feature owns that
+  table). The public page shows the account (44px copy button) above the reference, and "payment received on …".
+- **Why:** customers paying by transfer need an account number, and a wrong one sends money to a stranger, so the
+  format is checked on both sides and changes are owner-only and audited (changing bank details is a common
+  invoice-fraud trick). `last_paid_on` uses the bank value date, not the time we recorded it, because that is when
+  the customer's money arrived. Reversed allocations are ignored, as everywhere else (invariant 5).
+- **Not done:** the invoice email (D-60) still only gives the link and the reference, not the bank account.
+
+## D-62 — Teal brand colour and calm motion (replaces "colour only for meaning")
+- **Decision:** after seeing the app, the product owner found it too plain and chose a teal + navy brand and
+  "lively but calm" motion. Primary (buttons) is teal-700 `#0F766E` in light and teal-400 `#2DD4BF` in dark;
+  focus rings, chart bars and icon accents are teal; the rail stays navy with a teal active item; page headers,
+  the auth pages, the public invoice and the landing hero get a light teal wash (`--brand-soft`), and the landing
+  page ends on a teal band. Motion is CSS only (`globals.css`): screens and cards fade up (`.animate-rise`,
+  staggered with `--i`), table rows fade in 35ms apart, ageing and score bars grow from the left, success ticks
+  pop in, linked cards lift 2px on hover, overdue badge dots pulse, and the Overview figures count up
+  (`lib/use-count-up.ts`).
+- **Why these limits:** white on teal-600 is only ~3.7:1, so buttons use teal-700 (~5.5:1, MASTER §9). Teal is a
+  different hue from every status colour (green paid, amber part-paid, red overdue, blue sent), so status still
+  reads at a glance. Only opacity and transform animate (no layout shift), nothing overshoots, everything is
+  under 0.8s, and `prefers-reduced-motion` turns it all off. The count-up only ever shows whole kobo and always
+  ends on the API's exact figure; screen readers get the final figure once (`sr-only`), and a background tab
+  (where browsers don't run animation frames) shows the final figure without counting.
+- **Replaces:** D-08's "colour is reserved for meaning" and "no gradients in the app"; MASTER.md §1, §3 and §5
+  are updated to match.
+
+## D-63 — A more modern landing page, kept cheap to draw
+- **Decision:** the product owner asked for a more modern, animated landing page. It now has: a sticky glass
+  header; soft teal/cyan/green glows drifting over a faded dot grid behind the hero; a pill badge with a pulsing
+  dot; a larger headline with teal-to-cyan gradient text; the match card floating gently, with a Paystack
+  payment card and an "auto-matched" chip floating out of step around it; a feature strip that scrolls by itself
+  (pauses on hover); "How it works" as numbered cards joined by a line; a bento grid for the trust points (the
+  kobo card shows `₦90,000.00 = 9,000,000 kobo`); and a dark closing card with a teal glow. Sections below the
+  hero fade up as they scroll into view with CSS scroll-driven animation (`animation-timeline: view()`);
+  browsers without it simply show them. Every feature named on the page exists in the app.
+- **Why it is built this way:** still CSS only, so the page stays a static server component. The first version
+  froze Chrome on the 8 GB dev laptop: big `filter: blur()` blobs that moved and scaled, gradient text with a
+  moving background, and glass blur on several cards are all redrawn on every frame. The glows are now radial
+  gradients (no filter) that only translate, the headline gradient is static, and glass blur is kept only on
+  the header. Only transform and opacity animate, and `prefers-reduced-motion` stops all of it.
+
+## D-64 — Split-screen auth pages with a brand panel
+- **Decision:** login, register, forgot password and reset password share `app/(auth)/layout.tsx`. On screens
+  1024px and wider it is now two columns: a navy brand panel (drifting teal glows, dot grid, the headline
+  "Every payment, matched to the right invoice.", three true points about the product, and a floating example
+  of an automatically matched payment whose tick pops in) and the form on a canvas with a soft teal glow. On
+  phones the panel is hidden so the form comes first. `AuthCard` is rounder with a thin teal-to-cyan top line,
+  and its contents (Google button, each form field, the submit button) fade up one after another (`.stagger`
+  in `globals.css`).
+- **Why:** the owner wanted the sign-in pages to look presentable, since they are the first screen after the
+  landing page. Changing only the shared layout and card restyles all four pages without touching their form
+  logic. Same rules as D-62/D-63: CSS only, transform/opacity only, radial-gradient glows instead of blur
+  filters, and nothing moves under `prefers-reduced-motion`.
+
+## D-65 — The owner's logo, and a fuller landing page on shadcn only
+- **Logo:** the owner's PNG (`public/brand/ReconcilePro Fintech Logo.png`) was cut into `logo-mark.png` (the
+  "R" alone), `logo-full.png`, `app/icon.png`, `app/apple-icon.png` and `app/favicon.ico`. `components/brand/logo.tsx`
+  shows the mark plus the wordmark as live text ("Reconcile" + green "Pro"), because the PNG's navy letters
+  disappear in dark mode; on navy surfaces the mark sits on a white tile. Used on the landing page, the auth
+  pages and the app rail. The product is now called ReconcilePro in titles and the logo.
+- **Landing page:** added a 3D product preview that straightens as it scrolls in (`.tilt-in`), a
+  before/after, "follow one payment" with dots travelling between the stages (`.animate-travel`), a bento of
+  features with a worked VAT/kobo example, a "who it's for" section on shadcn Tabs, an FAQ on shadcn Accordion,
+  section anchors in the header and a fuller footer. Cards lift, tilt back and scale on hover with their icon
+  turning (`.lift-card`, `.lift-icon`). Blue-to-green gradients echo the logo; teal stays the action colour.
+- **Why shadcn only (no DaisyUI):** DaisyUI 5 defines the same `--color-primary`-style variables our theme uses,
+  so it would repaint the whole app, and it duplicates components we have (`CLAUDE.md`: use shadcn, don't
+  hand-roll equivalents). Accordion and Tabs were added with the shadcn CLI.
+- **Honesty:** no testimonials, customer logos or numbers we can't back; the preview uses the seed demo's
+  figures, the FAQ describes only what exists today (two statement layouts, not named banks).

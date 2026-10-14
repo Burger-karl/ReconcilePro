@@ -3,10 +3,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { AlreadySignedIn } from "@/components/auth/already-signed-in";
 import { AuthCard, FormError, OrDivider } from "@/components/auth/auth-card";
 import { TextField } from "@/components/auth/text-field";
 import { GOOGLE_SIGN_IN_ENABLED, GoogleSignInButton } from "@/components/google-sign-in-button";
@@ -26,17 +27,17 @@ function LoginForm() {
   const router = useRouter();
   const next = safeNextPath(useSearchParams().get("next"));
   const [error, setError] = useState<string | null>(null);
+  // True from the moment this form signs someone in, so the "already signed in" card doesn't flash up
+  // between signing in and arriving at the next page.
+  const [signingIn, setSigningIn] = useState(false);
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
-
-  // Already signed in (e.g. pressed Back): go straight in.
-  useEffect(() => {
-    if (auth.status === "signed-in") router.replace(next);
-  }, [auth.status, next, router]);
 
   async function finish(request: Promise<Schemas["TokenResponse"]>) {
     setError(null);
     try {
-      await auth.signIn(await request);
+      const token = await request;
+      setSigningIn(true);
+      await auth.signIn(token);
       router.replace(next);
     } catch (caught) {
       // 401 wrong password, 429 too many attempts (backend D-42), 0 server unreachable: show the API's words.
@@ -48,6 +49,9 @@ function LoginForm() {
     finish(api(`${API}/auth/login`, { method: "POST", body: values }));
   const onGoogle = (credential: string) =>
     finish(api(`${API}/auth/google/login`, { method: "POST", body: { credential } }));
+
+  // Already signed in (e.g. clicked "Sign in" on the landing page): say so, rather than redirecting silently.
+  if (auth.status === "signed-in" && !signingIn) return <AlreadySignedIn continueTo={next} />;
 
   return (
     <AuthCard

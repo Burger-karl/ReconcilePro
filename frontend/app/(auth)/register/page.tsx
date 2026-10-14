@@ -3,10 +3,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { AlreadySignedIn } from "@/components/auth/already-signed-in";
 import { AuthCard, FormError, OrDivider } from "@/components/auth/auth-card";
 import { TextField } from "@/components/auth/text-field";
 import { GOOGLE_SIGN_IN_ENABLED, GoogleSignInButton } from "@/components/google-sign-in-button";
@@ -28,19 +29,19 @@ export default function RegisterPage() {
   const auth = useAuth();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  // True from the moment this form creates the account, so the "already signed in" card doesn't flash up.
+  const [signingIn, setSigningIn] = useState(false);
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { workspace_name: "", email: "", password: "" },
   });
 
-  useEffect(() => {
-    if (auth.status === "signed-in") router.replace("/dashboard");
-  }, [auth.status, router]);
-
   async function finish(request: Promise<Schemas["TokenResponse"]>) {
     setError(null);
     try {
-      await auth.signIn(await request);
+      const token = await request;
+      setSigningIn(true);
+      await auth.signIn(token);
       router.replace("/dashboard");
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : "Something went wrong. Please try again.");
@@ -64,6 +65,10 @@ export default function RegisterPage() {
       }),
     );
   }
+
+  // Already signed in (e.g. clicked "Create free workspace" on the landing page): say so, rather than
+  // redirecting silently. Signing out there brings this form back, to register another business.
+  if (auth.status === "signed-in" && !signingIn) return <AlreadySignedIn />;
 
   return (
     <AuthCard

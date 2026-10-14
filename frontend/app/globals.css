@@ -6,8 +6,9 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design tokens come from design-system/reconcile/MASTER.md (Swiss style, navy ink on white).
- * Colour is reserved for meaning: status colours live only in components/status-badge.tsx.
+ * Design tokens come from design-system/reconcile/MASTER.md: navy ink on white with a TEAL brand colour
+ * (DECISIONS D-62). Teal is for brand and actions (buttons, active nav, focus, charts); status colours still
+ * live only in components/status-badge.tsx, and teal is a different hue from all of them.
  * Values are plain hex with the Tailwind name beside them, so each one is easy to trace.
  */
 
@@ -15,6 +16,9 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-canvas: var(--canvas);
+  /* Brand teal for icons and highlights, and a very light wash of it for page headers and hero areas. */
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
   /* Fonts are loaded in app/layout.tsx with next/font and exposed as CSS variables. */
   --font-sans: var(--font-plex-sans);
   --font-mono: var(--font-plex-mono);
@@ -66,34 +70,38 @@
   --card-foreground: #0f172a;
   --popover: #ffffff;
   --popover-foreground: #0f172a;
-  --primary: #0f172a; /* navy ink: buttons, active nav */
+  /* teal-700, not teal-600: white text on teal-600 is only ~3.7:1, on teal-700 it is ~5.5:1 (MASTER §9). */
+  --primary: #0f766e; /* teal-700: buttons */
   --primary-foreground: #ffffff;
+  --brand: #0d9488; /* teal-600: icons, chart bars, accents (not body text) */
+  --brand-soft: #f0fdfa; /* teal-50: header and hero wash */
   --secondary: #f1f5f9; /* slate-100 */
   --secondary-foreground: #0f172a;
   --muted: #f1f5f9; /* slate-100 */
   --muted-foreground: #475569; /* slate-600, passes 4.5:1 on white */
-  --accent: #f1f5f9;
-  --accent-foreground: #0f172a;
+  --accent: #f0fdfa; /* teal-50: hover on ghost/outline buttons and menu items */
+  --accent-foreground: #134e4a; /* teal-900 */
   --destructive: #dc2626; /* red-600 */
   --border: #e2e8f0; /* slate-200 */
   --input: #e2e8f0;
-  --ring: #0f172a;
-  /* Charts: navy first, then lighter slates. Status colours are not used for ordinary series. */
-  --chart-1: #0f172a;
-  --chart-2: #475569;
-  --chart-3: #94a3b8;
-  --chart-4: #cbd5e1;
-  --chart-5: #e2e8f0;
+  --ring: #0d9488; /* teal-600 focus ring */
+  /* Charts: teal shades. Status colours are not used for ordinary series. */
+  --chart-1: #0d9488;
+  --chart-2: #14b8a6;
+  --chart-3: #5eead4;
+  --chart-4: #99f6e4;
+  --chart-5: #ccfbf1;
   --radius: 0.5rem; /* 8px */
-  /* Layout C: the icon rail is dark navy in BOTH themes (DECISIONS D-50). slate-400 on slate-950 is ~7:1. */
-  --sidebar: #020617;
-  --sidebar-foreground: #94a3b8;
-  --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: #020617;
-  --sidebar-accent: #1e293b;
-  --sidebar-accent-foreground: #ffffff;
+  /* Layout C: the icon rail is navy in BOTH themes (D-50); the active item is teal (D-62).
+     slate-400 on slate-900 is ~6.9:1; teal-300 on teal-900 is ~6:1. */
+  --sidebar: #0f172a; /* slate-900 */
+  --sidebar-foreground: #94a3b8; /* slate-400 */
+  --sidebar-primary: #14b8a6; /* teal-500: the logo tile */
+  --sidebar-primary-foreground: #042f2e; /* teal-950 */
+  --sidebar-accent: #134e4a; /* teal-900: active and hovered items */
+  --sidebar-accent-foreground: #5eead4; /* teal-300 */
   --sidebar-border: #1e293b;
-  --sidebar-ring: #cbd5e1;
+  --sidebar-ring: #5eead4;
 }
 
 /* Dark theme (toggle) */
@@ -105,31 +113,33 @@
   --card-foreground: #f8fafc;
   --popover: #0f172a;
   --popover-foreground: #f8fafc;
-  --primary: #f8fafc;
-  --primary-foreground: #0f172a;
+  --primary: #2dd4bf; /* teal-400 */
+  --primary-foreground: #042f2e; /* teal-950, ~9:1 on teal-400 */
+  --brand: #2dd4bf;
+  --brand-soft: #042f2e; /* teal-950 */
   --secondary: #1e293b; /* slate-800 */
   --secondary-foreground: #f8fafc;
   --muted: #1e293b;
   --muted-foreground: #94a3b8; /* slate-400 */
-  --accent: #1e293b;
-  --accent-foreground: #f8fafc;
+  --accent: #134e4a; /* teal-900 */
+  --accent-foreground: #ccfbf1; /* teal-100 */
   --destructive: #f87171; /* red-400 */
   --border: #1e293b;
   --input: #334155; /* slate-700 */
-  --ring: #cbd5e1; /* slate-300 */
-  --chart-1: #e2e8f0;
-  --chart-2: #94a3b8;
-  --chart-3: #64748b;
-  --chart-4: #475569;
-  --chart-5: #334155;
-  --sidebar: #020617;
-  --sidebar-foreground: #94a3b8;
-  --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: #020617;
-  --sidebar-accent: #1e293b;
-  --sidebar-accent-foreground: #ffffff;
+  --ring: #2dd4bf; /* teal-400 */
+  --chart-1: #2dd4bf;
+  --chart-2: #14b8a6;
+  --chart-3: #0d9488;
+  --chart-4: #0f766e;
+  --chart-5: #115e59;
+  --sidebar: #0f172a; /* slate-900 */
+  --sidebar-foreground: #94a3b8; /* slate-400 */
+  --sidebar-primary: #14b8a6; /* teal-500: the logo tile */
+  --sidebar-primary-foreground: #042f2e; /* teal-950 */
+  --sidebar-accent: #134e4a; /* teal-900: active and hovered items */
+  --sidebar-accent-foreground: #5eead4; /* teal-300 */
   --sidebar-border: #1e293b;
-  --sidebar-ring: #cbd5e1;
+  --sidebar-ring: #5eead4;
 }
 
 @layer base {
@@ -145,5 +155,284 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/*
+ * Motion (DECISIONS D-62, MASTER.md §5). Short (≤ 400ms), ease-out, no bounce, and nothing moves at all for
+ * people who ask their system for reduced motion. Only opacity and transform are animated: they don't change
+ * layout, so nothing around the element jumps.
+ */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@layer utilities {
+  /* A progress bar filling from the left (set origin-left on it). */
+  .animate-grow {
+    animation: grow 700ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  }
+  /* Fade and slide up on first render. Set --i (0, 1, 2…) on siblings to make them arrive one after another. */
+  .animate-rise {
+    animation: rise 360ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+  /* A success tick appearing. Scale only up to 1, never past it: an overshoot reads as a bounce. */
+  .animate-pop {
+    animation: pop 260ms ease-out both;
+  }
+  /* Cards that link somewhere rise 2px and gain a shadow on hover. transform doesn't move neighbours. */
+  .hover-lift {
+    transition:
+      transform 200ms ease-out,
+      box-shadow 200ms ease-out,
+      border-color 200ms ease-out;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px rgb(15 23 42 / 0.08);
+    border-color: var(--brand);
+  }
+}
+
+/* Table rows in a list fade in one after another (35ms apart for the first 10; the rest arrive together). */
+[data-slot="table-body"] > [data-slot="table-row"] {
+  animation: rise 300ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+[data-slot="table-body"] > [data-slot="table-row"]:nth-child(2) { animation-delay: 35ms; }
+[data-slot="table-body"] > [data-slot="table-row"]:nth-child(3) { animation-delay: 70ms; }
+[data-slot="table-body"] > [data-slot="table-row"]:nth-child(4) { animation-delay: 105ms; }
+[data-slot="table-body"] > [data-slot="table-row"]:nth-child(5) { animation-delay: 140ms; }
+[data-slot="table-body"] > [data-slot="table-row"]:nth-child(6) { animation-delay: 175ms; }
+[data-slot="table-body"] > [data-slot="table-row"]:nth-child(7) { animation-delay: 210ms; }
+[data-slot="table-body"] > [data-slot="table-row"]:nth-child(8) { animation-delay: 245ms; }
+[data-slot="table-body"] > [data-slot="table-row"]:nth-child(9) { animation-delay: 280ms; }
+[data-slot="table-body"] > [data-slot="table-row"]:nth-child(10) { animation-delay: 315ms; }
+[data-slot="table-body"] > [data-slot="table-row"]:nth-child(n + 11) { animation-delay: 315ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-pop,
+  .animate-grow,
+  [data-slot="table-body"] > [data-slot="table-row"] {
+    animation: none;
+  }
+  .hover-lift,
+  .hover-lift:hover {
+    transition: none;
+    transform: none;
+  }
+}
+
+/*
+ * Landing page only (app/(marketing)/page.tsx, DECISIONS D-63). Still CSS only, so the page stays a server
+ * component, and still transform/opacity only. Everything here stops for prefers-reduced-motion (bottom).
+ */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(40px, -30px);
+  }
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@layer utilities {
+  /* Gentle up-and-down for the hero cards; --i offsets each card so they don't move in step. */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * -2s);
+  }
+  /*
+   * A soft round glow: a radial gradient fading to transparent, coloured by --glow. Looks like a blurred blob
+   * but costs nothing to draw, unlike filter: blur(), which a slow machine must redo on every frame it moves.
+   */
+  .glow {
+    border-radius: 9999px;
+    background: radial-gradient(circle closest-side, var(--glow), transparent);
+  }
+  /* The glows behind the hero wander slowly (translate only, so the browser just moves the layer). */
+  .animate-drift {
+    animation: drift 18s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * -6s);
+  }
+  /* A row that holds its content twice and slides left by half: the second copy takes over seamlessly. */
+  .animate-marquee {
+    animation: marquee 40s linear infinite;
+  }
+  .animate-marquee:hover {
+    animation-play-state: paused;
+  }
+  /* Faint dot grid, fading out towards the edges. */
+  .bg-dots {
+    background-image: radial-gradient(color-mix(in oklab, var(--foreground) 14%, transparent) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  }
+  /*
+   * Scroll reveal: fade up as the element scrolls into view, driven by the scroll position itself
+   * (animation-timeline: view()), no JavaScript. Browsers without it just show the element.
+   */
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-drift,
+  .animate-marquee,
+  .reveal {
+    animation: none;
+  }
+}
+
+/*
+ * Auth pages (app/(auth)/layout.tsx, components/auth/auth-card.tsx, DECISIONS D-64): the direct children of a
+ * .stagger element, and the form fields inside it, fade up one after another.
+ */
+.stagger > *,
+.stagger [data-slot="field"] {
+  animation: rise 360ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+.stagger > :nth-child(2) { animation-delay: 80ms; }
+.stagger > :nth-child(3) { animation-delay: 160ms; }
+.stagger > :nth-child(4) { animation-delay: 240ms; }
+.stagger > :nth-child(5) { animation-delay: 320ms; }
+.stagger [data-slot="field"]:nth-child(1) { animation-delay: 200ms; }
+.stagger [data-slot="field"]:nth-child(2) { animation-delay: 270ms; }
+.stagger [data-slot="field"]:nth-child(3) { animation-delay: 340ms; }
+.stagger [data-slot="field"]:nth-child(4) { animation-delay: 410ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .stagger > *,
+  .stagger [data-slot="field"] {
+    animation: none;
+  }
+}
+
+/*
+ * Landing page, second pass (DECISIONS D-65). Same rules: CSS only, transform/opacity only, off for
+ * prefers-reduced-motion.
+ */
+@keyframes travel {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(calc(100cqw - 100%));
+    opacity: 0;
+  }
+}
+@keyframes untilt {
+  from {
+    transform: perspective(1400px) rotateX(18deg) scale(0.94);
+  }
+  to {
+    transform: perspective(1400px) rotateX(0deg) scale(1);
+  }
+}
+
+@layer utilities {
+  /* The product preview leans back in 3D and straightens up as it scrolls into view (scroll-driven). */
+  @supports (animation-timeline: view()) {
+    .tilt-in {
+      transform-origin: center top;
+      animation: untilt linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 40%;
+    }
+  }
+  /*
+   * Cards that lift towards you on hover: rise 6px, grow 1%, tilt back slightly, deeper shadow. The icon
+   * inside (.lift-icon) turns and grows. Transforms only, so the cards next to it don't move.
+   */
+  .lift-card {
+    transition:
+      transform 300ms cubic-bezier(0.2, 0.7, 0.3, 1),
+      box-shadow 300ms ease-out,
+      border-color 300ms ease-out;
+  }
+  .lift-card:hover {
+    transform: perspective(900px) translateY(-6px) rotateX(3deg) scale(1.01);
+    box-shadow: 0 24px 48px -16px rgb(13 148 136 / 0.35);
+    border-color: color-mix(in oklab, var(--brand) 55%, transparent);
+  }
+  .lift-icon {
+    transition: transform 300ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  .lift-card:hover .lift-icon {
+    transform: rotate(-8deg) scale(1.12);
+  }
+  /* A dot that runs along a track from left to right, forever. The track needs container-type (see below). */
+  .flow-track {
+    container-type: inline-size;
+  }
+  .animate-travel {
+    animation: travel 2.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    animation-delay: calc(var(--i, 0) * 0.9s);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt-in,
+  .animate-travel {
+    animation: none;
+  }
+  .lift-card,
+  .lift-card:hover,
+  .lift-card:hover .lift-icon {
+    transition: none;
+    transform: none;
   }
 }
