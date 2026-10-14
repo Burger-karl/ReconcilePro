@@ -2,7 +2,7 @@
 
 /**
  * Money matched to invoices per week (backend D-48), last 8 weeks, as columns.
- * dataviz rules: one series → no legend (the title names it); one colour (navy / slate-200 in dark,
+ * dataviz rules: one series → no legend (the title names it); one colour (teal-600 / teal-400 in dark, D-62;
  * contrast ≥ 3:1 checked with the palette validator); columns ≤ 24px with a 4px rounded top, square at
  * the baseline; hairline horizontal grid; compact ₦ on the axis, full ₦ to the kobo in the tooltip and table.
  */
@@ -16,7 +16,7 @@ import type { Schemas } from "@/lib/api";
 import { compactNaira, formatNaira } from "@/lib/money";
 
 const config = {
-  collected_kobo: { label: "Collected", theme: { light: "#0f172a", dark: "#e2e8f0" } },
+  collected_kobo: { label: "Collected", theme: { light: "#0d9488", dark: "#2dd4bf" } }, // teal-600 / teal-400 (D-62)
 } satisfies ChartConfig;
 
 const shortDate = new Intl.DateTimeFormat("en-NG", { day: "numeric", month: "short" });

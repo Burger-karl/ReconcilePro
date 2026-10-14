@@ -17,6 +17,7 @@ Paystack transaction insert, an audit row) are saved together or not at all (inv
 """
 
 import uuid
+from datetime import date
 
 from sqlalchemy import BigInteger, cast, func
 from sqlmodel import Session, select
@@ -86,6 +87,23 @@ def invoice_paid_totals(
         .group_by(PaymentAllocation.invoice_id)
     ).all()
     return {invoice_id: total for invoice_id, total in rows}
+
+
+def last_payment_date(session: Session, workspace_id: uuid.UUID, invoice_id: uuid.UUID) -> date | None:
+    """Value date of the latest NON-reversed payment to this invoice (the day the money arrived), or None.
+
+    Shown on the public page as "payment received on …" (D-61). A reversed allocation was never really a
+    payment for this invoice, so it is ignored, like in invoice_paid_totals.
+    """
+    return session.exec(
+        select(func.max(Transaction.value_date))
+        .join(PaymentAllocation, PaymentAllocation.transaction_id == Transaction.id)
+        .where(
+            PaymentAllocation.workspace_id == workspace_id,
+            PaymentAllocation.invoice_id == invoice_id,
+            PaymentAllocation.reversed_at.is_(None),
+        )
+    ).one()
 
 
 def allocated_totals(

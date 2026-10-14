@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 type Bucket = Schemas["AgeingBucket"]["bucket"];
 
 const BUCKETS: Record<Bucket, { label: string; bar: string }> = {
-  current: { label: "Not yet due", bar: "bg-slate-400 dark:bg-slate-500" },
+  current: { label: "Not yet due", bar: "bg-brand" }, // brand teal: on time is the healthy bucket (D-62)
   "1_30": { label: "1–30 days late", bar: "bg-amber-500 dark:bg-amber-400" },
   "31_60": { label: "31–60 days late", bar: "bg-red-500 dark:bg-red-400" },
   "60_plus": { label: "Over 60 days late", bar: "bg-red-800 dark:bg-red-700" },
@@ -38,8 +38,8 @@ export function AgeingList({ buckets }: { buckets: Schemas["AgeingBucket"][] | u
           <Skeleton className="h-56 w-full" />
         ) : (
           <ul className="flex flex-col gap-4">
-            {buckets.map((bucket) => (
-              <li key={bucket.bucket} className="flex flex-col gap-1.5">
+            {buckets.map((bucket, index) => (
+              <li key={bucket.bucket} className="animate-rise flex flex-col gap-1.5" style={{ "--i": index } as React.CSSProperties}>
                 <div className="flex items-baseline justify-between gap-3 text-sm">
                   <span>
                     {BUCKETS[bucket.bucket].label}
@@ -52,7 +52,8 @@ export function AgeingList({ buckets }: { buckets: Schemas["AgeingBucket"][] | u
                 {/* Track = a lighter step behind the fill; the bar is decoration, the text above carries the value. */}
                 <div className="h-2 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
                   <div
-                    className={cn("h-full rounded-full", BUCKETS[bucket.bucket].bar)}
+                    // Grows from the left on first render (animate-grow, globals.css); its final width is the real share.
+                    className={cn("animate-grow h-full origin-left rounded-full", BUCKETS[bucket.bucket].bar)}
                     style={{ width: `${(bucket.outstanding_kobo / largest) * 100}%` }}
                   />
                 </div>

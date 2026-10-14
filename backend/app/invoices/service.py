@@ -456,13 +456,22 @@ def void_invoice(session: Session, user: User, invoice_id: uuid.UUID, reason: st
 def get_public_invoice(session: Session, token: str) -> PublicInvoice:
     """Look up by the secret token only. Drafts have no token, so they can never be shown."""
     row = session.exec(
-        select(Invoice, Customer.name, Workspace.name)
+        select(Invoice, Customer.name, Workspace)
         .join(Customer, Customer.id == Invoice.customer_id)
         .join(Workspace, Workspace.id == Invoice.workspace_id)
         .where(Invoice.public_token == token)
     ).first()
     if row is None:
         raise InvoiceNotFound
-    invoice, customer_name, business_name = row
+    invoice, customer_name, workspace = row
     read = to_read(invoice, customer_name, paid_totals(session, invoice.workspace_id, [invoice.id]).get(invoice.id, 0))
-    return PublicInvoice(business_name=business_name, **read.model_dump(include=set(PublicInvoice.model_fields) - {"business_name"}))
+    # Copy only the InvoiceRead fields the public page shares; the rest are filled in explicitly below.
+    shared = read.model_dump(include=set(PublicInvoice.model_fields) & set(InvoiceRead.model_fields))
+    return PublicInvoice(
+        **shared,
+        business_name=workspace.name,
+        last_paid_on=allocations.last_payment_date(session, invoice.workspace_id, invoice.id),
+        bank_name=workspace.bank_name,
+        bank_account_number=workspace.bank_account_number,
+        bank_account_name=workspace.bank_account_name,
+    )

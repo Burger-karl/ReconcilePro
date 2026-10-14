@@ -14,8 +14,9 @@ variance 5, motion 4, density 7) on 2026-10-05, then hand-edited. The edits are 
 ## 1. Colour
 
 Why the generated palette was replaced: it used gold (`#F59E0B`) as primary, which is the same hue as the
-`part_paid` status badge, and a purple accent, which the skill's own anti-pattern list forbids. In Reconcile,
-**colour is reserved for meaning** (invoice status, errors). The brand itself is navy ink on white.
+`part_paid` status badge, and a purple accent, which the skill's own anti-pattern list forbids.
+**Brand (D-62):** navy ink on white with a **teal** brand colour for actions, focus, charts and soft washes.
+Teal is a different hue from every status colour below, so status still carries meaning on its own.
 
 ### Light theme (default)
 | Role | Hex | Tailwind | CSS variable |
@@ -27,9 +28,13 @@ Why the generated palette was replaced: it used gold (`#F59E0B`) as primary, whi
 | Muted surface | `#F1F5F9` | slate-100 | `--muted` |
 | Muted text | `#475569` | slate-600 | `--muted-foreground` |
 | Border | `#E2E8F0` | slate-200 | `--border` |
-| Primary (buttons, active nav) | `#0F172A` | slate-900 | `--primary` |
+| Primary (buttons) | `#0F766E` | teal-700 (white text ~5.5:1; teal-600 fails 4.5:1) | `--primary` |
+| Brand (icons, chart bars) | `#0D9488` | teal-600 | `--brand` |
+| Brand wash (headers, hero) | `#F0FDFA` | teal-50 | `--brand-soft` |
+| Hover (ghost/outline, menus) | `#F0FDFA` / text `#134E4A` | teal-50 / teal-900 | `--accent` |
+| Rail | `#0F172A`, active `#134E4A` with `#5EEAD4` text | slate-900, teal-900 / teal-300 | `--sidebar*` |
 | On primary | `#FFFFFF` | white | `--primary-foreground` |
-| Focus ring | `#0F172A` | slate-900 | `--ring` |
+| Focus ring | `#0D9488` | teal-600 | `--ring` |
 | Destructive | `#DC2626` | red-600 | `--destructive` |
 
 ### Dark theme (toggle)
@@ -42,9 +47,10 @@ Why the generated palette was replaced: it used gold (`#F59E0B`) as primary, whi
 | Muted surface | `#1E293B` | slate-800 |
 | Muted text | `#94A3B8` | slate-400 |
 | Border | `#1E293B` | slate-800 |
-| Primary | `#F8FAFC` | slate-50 |
-| On primary | `#0F172A` | slate-900 |
-| Focus ring | `#CBD5E1` | slate-300 |
+| Primary | `#2DD4BF` | teal-400 |
+| On primary | `#042F2E` | teal-950 |
+| Brand wash | `#042F2E` | teal-950 |
+| Focus ring | `#2DD4BF` | teal-400 |
 | Destructive | `#F87171` | red-400 |
 
 ### Status colours (one `StatusBadge` component, see frontend/CLAUDE.md)
@@ -83,7 +89,8 @@ Spacing follows Tailwind's 4px scale. Density by area:
 | shadow-sm | `0 1px 2px rgb(15 23 42 / 0.05)` | cards (light theme only; dark uses borders) |
 | shadow-lg | `0 10px 15px rgb(15 23 42 / 0.08)` | popovers, dialogs, command menu |
 
-Swiss rule: separate things with **borders and whitespace first**, shadows second. No gradients in the app.
+Swiss rule: separate things with **borders and whitespace first**, shadows second. Gradients only as a soft
+teal wash (`from-brand-soft`) behind headers and hero areas, and the landing page's closing teal band (D-62).
 
 ## 4. Components (map to shadcn/ui — never hand-roll an equivalent)
 
@@ -103,8 +110,12 @@ Icons: **Lucide** only (ships with shadcn), 16px in tables, 20px in nav. No emoj
 
 ## 5. Motion
 
-- Durations 150–250ms, `ease-out` for enter, slightly faster for exit.
-- Allowed: fade/slide-in of toasts and dialogs, row fade-out when a queue item is resolved, skeleton shimmer.
+- Durations 150–400ms (Overview count-up 800ms), `ease-out` for enter, slightly faster for exit.
+- Allowed: fade/slide-in of toasts and dialogs, row fade-out when a queue item is resolved, skeleton shimmer, and
+  (D-62, utilities in `app/globals.css`): `.animate-rise` (fade + 8px slide up, stagger with `--i`), table rows
+  fading in 35ms apart, `.animate-grow` (bars fill from the left), `.animate-pop` (success ticks, no overshoot),
+  `.hover-lift` (2px lift + shadow on linked cards; transform, so neighbours don't move), a pulsing dot on
+  overdue badges, and KPI figures counting up in whole kobo to the exact value (`lib/use-count-up.ts`).
 - **Not allowed:** `back.out` overshoot or scale bounce on tables and numbers (the skill itself warns this reads as sloppy
   on data UI), hover transforms that shift layout, GSAP. CSS transitions and `tailwindcss-animate` are enough.
 - Respect `prefers-reduced-motion`: use the `motion-safe:` prefix for anything that moves.

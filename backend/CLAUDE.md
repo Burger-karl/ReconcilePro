@@ -8,6 +8,7 @@ service.py (logic), router.py (thin FastAPI routes).
   db (engine, session), deps (current_user, require_owner), limits (request size, failed logins)
 - app/db_models.py: imports every feature's models.py so Alembic and scripts/erd.py see all tables
 - app/auth: Workspace, User, PasswordResetToken models; register/login/me, Google sign-in (google.py), forgot/reset password
+- app/workspaces: workspace settings (bank details for transfers, owner only); uses the Workspace model from app/auth
 - app/email: send_email() via Resend (logs instead of sending when RESEND_API_KEY is empty)
 - app/customers: Customer model, CRUD
 - app/invoices: Invoice model, VAT + derived status in service.py, router.py, public_router.py (/api/v1/public/invoices/{token})

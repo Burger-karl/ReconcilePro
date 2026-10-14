@@ -5,10 +5,12 @@
  * on desktop (icons + tooltips), a slide-out sheet with labels on phones.
  */
 
-import { ArrowLeftRight, FileText, Inbox, LayoutDashboard, ScrollText, Upload, Users } from "lucide-react";
+import { FileText, Inbox, LayoutDashboard, ScrollText, Settings, Upload, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import useSWR from "swr";
+
+import { LogoMark } from "@/components/brand/logo";
 
 import { UserMenu } from "@/components/app-shell/user-menu";
 import {
@@ -29,6 +31,7 @@ const NAV = [
   { href: "/customers", label: "Customers", icon: Users },
   { href: "/statements", label: "Statements", icon: Upload },
   { href: "/audit", label: "Audit log", icon: ScrollText },
+  { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
 export function Rail() {
@@ -43,12 +46,13 @@ export function Rail() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Reconcile" size="lg" className="hover:bg-transparent">
+            <SidebarMenuButton asChild tooltip="ReconcilePro" size="lg" className="hover:bg-transparent">
               <Link href="/dashboard">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-                  <ArrowLeftRight className="size-4" aria-hidden />
+                {/* The owner's logo mark on a white tile: its navy "R" would vanish on the navy rail (D-65). */}
+                <LogoMark onDark size={20} />
+                <span className="font-semibold text-white">
+                  Reconcile<span className="text-emerald-400">Pro</span>
                 </span>
-                <span className="font-semibold text-sidebar-accent-foreground">Reconcile</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -62,7 +66,14 @@ export function Rail() {
             const badge = item.href === "/match" && needsReview > 0 ? needsReview : null;
             return (
               <SidebarMenuItem key={item.href} className="relative">
-                <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
+                {/* Active = teal (sidebar-accent token). Hover on the others is a faint white tint, so the
+                    current screen always stands out (D-62). */}
+                <SidebarMenuButton
+                  asChild
+                  isActive={active}
+                  tooltip={item.label}
+                  className={active ? undefined : "transition-colors hover:bg-white/5 hover:text-slate-100"}
+                >
                   <Link href={item.href} aria-current={active ? "page" : undefined}>
                     <item.icon aria-hidden />
                     <span>{item.label}</span>

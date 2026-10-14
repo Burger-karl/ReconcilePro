@@ -70,6 +70,9 @@ class UserRead(BaseModel):
 class WorkspaceRead(BaseModel):
     id: uuid.UUID
     name: str
+    bank_name: str | None
+    bank_account_number: str | None
+    bank_account_name: str | None
 
 
 class TokenResponse(BaseModel):
