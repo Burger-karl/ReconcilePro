@@ -30,7 +30,8 @@ class Settings(BaseSettings):
     # Used to sign login tokens. The default only exists so local dev starts; Render sets a real one.
     # Generate one with: python -c "import secrets; print(secrets.token_urlsafe(48))"
     jwt_secret: str = DEV_JWT_SECRET
-    jwt_expire_minutes: int = 60 * 24
+    # Short, because the browser keeps the token where any injected script could read it (D-67).
+    jwt_expire_minutes: int = 2 * 60
 
     paystack_secret_key: str = ""
     # Empty in local dev: emails are then written to the log instead of sent (app/email/service.py).

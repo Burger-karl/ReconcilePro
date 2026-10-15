@@ -595,3 +595,23 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
   15 minutes; wrong in the other, an attacker can pick a new address per guess.
 - **Rejected:** `uvicorn --proxy-headers --forwarded-allow-ips="*"`: with every hop trusted it uses the
   LEFTMOST entry, which the client writes. A library (slowapi) plus Redis: more moving parts than one process needs.
+
+## D-67 — Hardening the token in localStorage: 2-hour tokens, real logout, a CSP
+- **Context:** the login token is kept in `localStorage`, where any script injected into the page (XSS) could
+  read it. Signing out only deleted the browser's copy; a stolen copy kept working for 24 hours.
+- **Decision:** (1) tokens last 2 hours (`jwt_expire_minutes`, was 24 h); when one runs out, the next API call
+  gets 401 and the app sends the user to `/login?next=…`. (2) `POST /auth/logout` bumps `token_version` (D-41),
+  so every token issued so far is refused, and writes `user.logged_out` to the audit log. The frontend's
+  sign-out calls it, best effort, with the token it has just removed. (3) A Content-Security-Policy on every
+  page (`frontend/next.config.ts`): `fetch` may only reach this site, the API and Google sign-in; images only
+  this site; no plugins, no `<base>` tricks, no framing (`frame-ancestors 'none'`).
+- **Why:** each one shrinks what a stolen token is worth: it dies within 2 hours, at once on sign-out, and the
+  CSP makes it harder for an injected script to send it anywhere.
+- **Known limits:** logout signs the user out on ALL their devices (one version number per user, no list of
+  tokens). No refresh tokens, so someone working for more than 2 hours signs in again. The CSP still allows
+  inline scripts (`'unsafe-inline'`), because nonces would make every page render per request; and it can't stop
+  a script navigating the page to another site with the token in the URL. It backs up, and doesn't replace,
+  the main rule: never render user data as raw HTML.
+- **Rejected for now:** an httpOnly cookie. Scripts can't read it, but the web app (Vercel) and API (Render) are
+  on different sites, so it would be a third-party cookie (blocked by Safari) unless `/api` is proxied through
+  Next.js, and it needs CSRF protection. The right next step if there is time.

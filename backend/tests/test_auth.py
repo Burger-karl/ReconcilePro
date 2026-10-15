@@ -190,3 +190,57 @@ def test_token_with_missing_or_wrong_version_is_401(client: TestClient, ver) -> 
     token = jwt.encode(claims, settings.jwt_secret, algorithm="HS256")
 
     assert client.get("/api/v1/auth/me", headers=auth_header(token)).status_code == 401
+
+
+# --- token lifetime and logout (D-67) -----------------------------------------------------------
+
+
+def test_login_token_lasts_two_hours(client: TestClient) -> None:
+    token = register(client)["access_token"]
+    claims = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
+
+    # A stolen token is useful for at most this long (it was 24 hours).
+    assert claims["exp"] - time.time() == pytest.approx(2 * 60 * 60, abs=60)
+
+
+def test_logout_stops_the_token_working(client: TestClient) -> None:
+    token = register(client)["access_token"]
+
+    assert client.post("/api/v1/auth/logout", headers=auth_header(token)).status_code == 204
+
+    # A JWT can't be deleted, but its version no longer matches the user's, so it is refused (D-41).
+    assert client.get("/api/v1/auth/me", headers=auth_header(token)).status_code == 401
+
+
+def test_logout_signs_out_every_device(client: TestClient) -> None:
+    phone = register(client)["access_token"]
+    laptop = client.post(
+        "/api/v1/auth/login", json={"email": REGISTER["email"], "password": REGISTER["password"]}
+    ).json()["access_token"]
+
+    client.post("/api/v1/auth/logout", headers=auth_header(laptop))
+
+    assert client.get("/api/v1/auth/me", headers=auth_header(phone)).status_code == 401
+
+
+def test_signing_in_again_after_logout_works(client: TestClient) -> None:
+    client.post("/api/v1/auth/logout", headers=auth_header(register(client)["access_token"]))
+
+    response = client.post("/api/v1/auth/login", json={"email": REGISTER["email"], "password": REGISTER["password"]})
+
+    assert response.status_code == 200
+    assert client.get("/api/v1/auth/me", headers=auth_header(response.json()["access_token"])).status_code == 200
+
+
+def test_logout_needs_a_valid_token(client: TestClient) -> None:
+    assert client.post("/api/v1/auth/logout").status_code == 401
+
+
+def test_logout_is_audited(client: TestClient, session: Session) -> None:
+    from app.audit.models import AuditEvent
+
+    body = register(client)
+    client.post("/api/v1/auth/logout", headers=auth_header(body["access_token"]))
+
+    actions = session.exec(select(AuditEvent.action).where(AuditEvent.entity_id == body["user"]["id"])).all()
+    assert "user.logged_out" in actions

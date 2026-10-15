@@ -15,6 +15,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useSWRConfig } from "swr";
 
 import { API, ApiError, api, getToken, setToken, type Schemas } from "@/lib/api";
+// Side effect only: zod settings, loaded here because this file runs in the browser on every page.
+import "@/lib/zod-config";
 
 type Me = Schemas["MeResponse"];
 
@@ -28,6 +30,7 @@ export type AuthState =
 type AuthContextValue = AuthState & {
   /** Store the token from a login/register response and load the user. */
   signIn: (response: Schemas["TokenResponse"]) => Promise<void>;
+  /** Forget the token here and ask the API to cancel it (and the user's other sessions, backend D-67). */
   signOut: () => void;
   retry: () => void;
 };
@@ -70,7 +73,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = useCallback(() => {
+    const token = getToken();
     setToken(null);
+    // Cancel the token on the server too, so a copy someone stole stops working now, not in two hours
+    // (backend D-67). Sent with the token we just removed; failures are ignored: after a 401 the token is
+    // already dead, and if the API is unreachable the browser is still signed out.
+    if (token) {
+      api(`${API}/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+    }
     // Forget every cached API answer, so the next person on this browser never sees this workspace's data.
     void mutate(() => true, undefined, { revalidate: false });
     setState({ status: "signed-out" });
