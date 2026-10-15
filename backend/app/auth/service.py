@@ -268,3 +268,24 @@ def reset_password(session: Session, raw_token: str, new_password: str) -> User:
     session.commit()
     session.refresh(user)
     return user
+
+
+def logout_everywhere(session: Session, user: User) -> None:
+    """Sign this user out on every device (D-67).
+
+    A JWT can't be deleted on the server, so we bump token_version instead: every token issued so far
+    carries the old version and get_current_user refuses it (D-41). One integer, no list of tokens. The
+    cost: it also ends the user's sessions on their other devices, which is what you want if a token
+    was stolen.
+    """
+    user.token_version += 1
+    session.add(user)
+    record(
+        session,
+        workspace_id=user.workspace_id,
+        actor_user_id=user.id,
+        action="user.logged_out",
+        entity_type="user",
+        entity_id=user.id,
+    )
+    session.commit()

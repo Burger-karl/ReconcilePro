@@ -39,10 +39,11 @@ against a real PostgreSQL database. Each fix has a test that fails without it (`
   `/public/invoices/{token}/pay` (calls Paystack on each request), register and forgot-password don't; best done
   at the edge (Render/Cloudflare). The login counters are in memory, per process.
 - **Login lockout can be triggered on purpose** for 15 minutes by guessing wrong; forgot password still works.
-- **Login tokens live 24 hours** and there is no "log out everywhere" button yet (`token_version` makes it a
-  one-line endpoint when the UI needs it).
+- **Login tokens live 2 hours** (was 24) and sign-out cancels them on the server, on every device (D-67).
+  No refresh tokens, so long sessions sign in again.
 - **Token in browser `localStorage`** (frontend): readable by any script on the page, so the UI must avoid XSS
-  (no `dangerouslySetInnerHTML` with user data). An httpOnly cookie would need CSRF protection instead.
+  (no `dangerouslySetInnerHTML` with user data). A Content-Security-Policy limits where a script can send it,
+  but still allows inline scripts (D-67). An httpOnly cookie would need CSRF protection and a same-site API.
 - **"PAYSTACK" in a customer's own transfer narration** marks that line as a settlement (never matched). It only
   hurts the payer, and the accountant can see it in the transactions list.
 - **Forgot-password timing:** a known email does a few database writes before answering; an unknown one doesn't.

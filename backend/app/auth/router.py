@@ -103,6 +103,12 @@ def google_login(data: GoogleLoginRequest, session: SessionDep) -> TokenResponse
     return token_response(user)
 
 
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(user: CurrentUser, session: SessionDep) -> Response:
+    service.logout_everywhere(session, user)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
 def forgot_password(data: ForgotPasswordRequest, session: SessionDep, background: BackgroundTasks) -> MessageResponse:
     result = service.request_password_reset(session, data.email)

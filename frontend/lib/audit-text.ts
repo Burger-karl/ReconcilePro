@@ -69,6 +69,8 @@ export function describeEvent(event: AuditEvent): DescribedEvent {
       return { text: "Password reset requested", amountKobo: null };
     case "user.password_reset":
       return { text: "Password changed", amountKobo: null };
+    case "user.logged_out":
+      return { text: "Signed out on every device", amountKobo: null };
     default:
       // A new backend action shows up readably instead of breaking the list.
       return { text: event.action.replace(/[._]/g, " "), amountKobo: null };

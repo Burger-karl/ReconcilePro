@@ -23,6 +23,7 @@ Conventions:
 | POST | `/api/v1/auth/google/login` *public* | `credential` | `{access_token, user}` | finds the user by Google `sub`; links a password account with the same email only when Google owns the address (D-38). 401 if no account |
 | POST | `/api/v1/auth/forgot-password` *public* | `email` | 202 `{detail}` | same answer whether or not the email exists; emails a 30-minute single-use link `{FRONTEND_URL}/reset-password#token=…`; at most 3 per account per hour (D-39, D-40, D-42) |
 | POST | `/api/v1/auth/reset-password` *public* | `token, new_password` | 204 | 400 for unknown, used or expired links (one message). Logs out every existing session (D-41) |
+| POST | `/api/v1/auth/logout` | — | 204 | bumps `token_version`, so every token this user holds stops working (all devices). Audit `user.logged_out` (D-67) |
 | GET | `/api/v1/auth/me` | — | `user` + `workspace` | `workspace` includes `bank_name`, `bank_account_number`, `bank_account_name` (null until saved) |
 | PUT | `/api/v1/workspace/bank-details` | `bank_name, bank_account_number, bank_account_name` | `workspace` | owner only (403 for a member). All three required; account number exactly 10 digits (NUBAN), else 422. Audited as `workspace.bank_details_updated` with `before`/`after` (D-61) |
 
