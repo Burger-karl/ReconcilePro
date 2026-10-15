@@ -6,7 +6,7 @@ instead of failing on the first request.
 
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Only for local development. Production refuses to start with it (D-43).
@@ -44,6 +44,10 @@ class Settings(BaseSettings):
 
     # The Next.js app; allowed by CORS and used to build public invoice links.
     frontend_url: str = "http://localhost:3000"
+
+    # How many proxies the host puts in front of the API, each appending to X-Forwarded-For. 0 = none (local),
+    # so the header is ignored: anyone can send it. Set on Render after checking the real address (D-66).
+    trusted_proxy_hops: int = Field(default=0, ge=0)
 
     @model_validator(mode="after")
     def production_needs_a_real_jwt_secret(self) -> "Settings":

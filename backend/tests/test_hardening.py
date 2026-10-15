@@ -168,3 +168,86 @@ def test_block_ends_after_the_window(client: TestClient, auth_headers: dict, mon
     clock[0] += 15 * 60 + 1
 
     assert _login(client, "correct-horse-1") == 200
+
+
+# --- failed logins per IP address (D-66) --------------------------------------------------------------
+
+
+def test_thirty_failures_from_one_address_block_every_login_from_it(client: TestClient, auth_headers: dict) -> None:
+    # Password spraying: one common password tried against many accounts. Each email stays under its own
+    # limit of 10, so only a per-address count can stop it.
+    for n in range(30):
+        response = client.post("/api/v1/auth/login", json={"email": f"guess{n}@example.com", "password": "Password1"})
+        assert response.status_code == 401
+
+    # Blocked now, even for a real account with the right password.
+    assert _login(client, "correct-horse-1") == 429
+
+
+def test_a_successful_login_does_not_reset_the_address_count(client: TestClient, auth_headers: dict) -> None:
+    # Otherwise an attacker with one real account could log into it every 29 guesses and spray forever.
+    for n in range(29):
+        client.post("/api/v1/auth/login", json={"email": f"guess{n}@example.com", "password": "Password1"})
+    assert _login(client, "correct-horse-1") == 200
+
+    _login(client, "wrong-guess-1")
+
+    assert _login(client, "correct-horse-1") == 429
+
+
+def test_address_block_ends_after_the_window(
+    client: TestClient, auth_headers: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.core.limits import login_attempts, login_ip_attempts
+
+    clock = [1000.0]
+    monkeypatch.setattr(login_ip_attempts, "clock", lambda: clock[0])
+    monkeypatch.setattr(login_attempts, "clock", lambda: clock[0])
+    for n in range(30):
+        client.post("/api/v1/auth/login", json={"email": f"guess{n}@example.com", "password": "Password1"})
+    assert _login(client, "correct-horse-1") == 429
+
+    clock[0] += 15 * 60 + 1
+
+    assert _login(client, "correct-horse-1") == 200
+
+
+# --- which address a request came from (D-66) ----------------------------------------------------------
+
+
+def _request(peer: str, forwarded_for: str | None = None):
+    from starlette.requests import Request
+
+    headers = [(b"x-forwarded-for", forwarded_for.encode())] if forwarded_for else []
+    return Request({"type": "http", "headers": headers, "client": (peer, 1234)})
+
+
+def test_without_a_proxy_the_peer_address_is_used_and_the_header_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.limits import client_ip
+
+    monkeypatch.setattr(settings, "trusted_proxy_hops", 0)
+    # Anyone can send X-Forwarded-For; with no proxy in front, believing it would let an attacker
+    # pick a fresh address for every guess.
+    assert client_ip(_request("203.0.113.9", "1.1.1.1")) == "203.0.113.9"
+
+
+def test_behind_one_proxy_the_address_it_added_is_used(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.limits import client_ip
+
+    monkeypatch.setattr(settings, "trusted_proxy_hops", 1)
+    # "1.1.1.1" was typed by the client (spoofed); the proxy appended the real address at the end.
+    assert client_ip(_request("10.0.0.2", "1.1.1.1, 203.0.113.9")) == "203.0.113.9"
+
+
+def test_behind_two_proxies_the_second_last_entry_is_used(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.limits import client_ip
+
+    monkeypatch.setattr(settings, "trusted_proxy_hops", 2)
+    assert client_ip(_request("10.0.0.2", "1.1.1.1, 203.0.113.9, 10.0.0.7")) == "203.0.113.9"
+
+
+def test_a_missing_header_falls_back_to_the_peer_address(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.limits import client_ip
+
+    monkeypatch.setattr(settings, "trusted_proxy_hops", 1)
+    assert client_ip(_request("10.0.0.2")) == "10.0.0.2"

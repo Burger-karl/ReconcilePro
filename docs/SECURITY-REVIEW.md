@@ -35,8 +35,9 @@ against a real PostgreSQL database. Each fix has a test that fails without it (`
 
 ## Known gaps (accepted for the MVP, revisit later)
 
-- **Per-IP rate limits** (many accounts from one address, `/public/invoices/{token}/pay` calling Paystack on each
-  request): best done at the edge (Render/Cloudflare). The login counter is in memory, per process.
+- **Per-IP rate limits** beyond login: login now has one (30 failures per address per 15 minutes, D-66), but
+  `/public/invoices/{token}/pay` (calls Paystack on each request), register and forgot-password don't; best done
+  at the edge (Render/Cloudflare). The login counters are in memory, per process.
 - **Login lockout can be triggered on purpose** for 15 minutes by guessing wrong; forgot password still works.
 - **Login tokens live 24 hours** and there is no "log out everywhere" button yet (`token_version` makes it a
   one-line endpoint when the UI needs it).
@@ -61,5 +62,6 @@ Re-run before each deploy.
 - Render: set `JWT_SECRET` (`python -c "import secrets; print(secrets.token_urlsafe(48))"`), `PAYSTACK_SECRET_KEY`,
   `RESEND_API_KEY`, `GOOGLE_CLIENT_ID`, `FRONTEND_URL`. Leave `ENVIRONMENT` unset (production).
 - Local runs outside docker compose: add `ENVIRONMENT=development` to `backend/.env`.
+- Set `TRUSTED_PROXY_HOPS` after checking which `X-Forwarded-For` entry is the real client address (D-66).
 - Paystack dashboard webhook URL: `https://<api>/api/v1/webhooks/paystack`.
 - Google Cloud Console: OAuth client with the frontend origin(s) as authorised JavaScript origins.

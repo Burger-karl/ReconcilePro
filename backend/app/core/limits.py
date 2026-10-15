@@ -5,7 +5,9 @@
    code could check the size, filling the disk. It is plain ASGI middleware so it sees the bytes as
    they arrive, which also catches uploads sent without a Content-Length header ("chunked").
 
-2. LoginAttempts: after too many wrong passwords for one email, that email is blocked for a while.
+2. LoginAttempts: after too many wrong passwords for one key, that key is blocked for a while. Two counters
+   use it: one per email (D-42: guessing one account's password) and one per IP address (D-66: "password
+   spraying", one common password tried against many accounts, which never trips a per-email limit).
    Kept in memory: simple, and enough for the MVP's single server process. It resets on restart, and
    with several processes each would count separately; a shared store (Redis) would fix both later.
 """
@@ -14,8 +16,10 @@ import time
 from collections import defaultdict, deque
 from threading import Lock
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+from app.core.config import settings
 
 # Statement uploads are at most 5 MB (statements/service.py); 6 MB leaves room for the multipart wrapping.
 MAX_REQUEST_BYTES = 6 * 1024 * 1024
@@ -85,7 +89,7 @@ async def _send_413(send: Send) -> None:
 
 
 class LoginAttempts:
-    """Counts failed logins per email in a sliding window."""
+    """Counts failed logins per key (an email or an IP address) in a sliding window."""
 
     def __init__(self, max_failures: int = 10, window_seconds: int = 15 * 60) -> None:
         self.max_failures = max_failures
@@ -96,32 +100,32 @@ class LoginAttempts:
         # FastAPI runs normal (def) routes in a thread pool, so two requests can touch this at once.
         self._lock = Lock()
 
-    def _recent(self, email: str, now: float) -> deque[float]:
-        failures = self._failures[email]
+    def _recent(self, key: str, now: float) -> deque[float]:
+        failures = self._failures[key]
         while failures and failures[0] <= now - self.window_seconds:
             failures.popleft()
         return failures
 
-    def is_blocked(self, email: str) -> bool:
+    def is_blocked(self, key: str) -> bool:
         with self._lock:
-            blocked = len(self._recent(email, self.clock())) >= self.max_failures
-            if not self._failures[email]:
-                del self._failures[email]  # don't keep an entry for every email ever tried
+            blocked = len(self._recent(key, self.clock())) >= self.max_failures
+            if not self._failures[key]:
+                del self._failures[key]  # don't keep an entry for every key ever tried
             return blocked
 
-    def record_failure(self, email: str) -> None:
+    def record_failure(self, key: str) -> None:
         with self._lock:
             now = self.clock()
-            self._recent(email, now).append(now)
-            # Someone trying thousands of different emails must not grow this without end:
-            # now and then, forget every email whose failures are all outside the window.
+            self._recent(key, now).append(now)
+            # Someone trying thousands of different keys must not grow this without end:
+            # now and then, forget every key whose failures are all outside the window.
             if len(self._failures) > 10_000:
                 for key in [key for key, times in self._failures.items() if times[-1] <= now - self.window_seconds]:
                     del self._failures[key]
 
-    def clear(self, email: str) -> None:
+    def clear(self, key: str) -> None:
         with self._lock:
-            self._failures.pop(email, None)
+            self._failures.pop(key, None)
 
     def reset(self) -> None:
         """Forget everything (tests)."""
@@ -129,4 +133,27 @@ class LoginAttempts:
             self._failures.clear()
 
 
+# 10 wrong passwords for one email in 15 minutes (D-42).
 login_attempts = LoginAttempts()
+# 30 failed logins from one IP address in 15 minutes, whatever the emails (D-66). Higher than the email
+# limit because an office or mobile network can put many honest people behind one address.
+login_ip_attempts = LoginAttempts(max_failures=30)
+
+
+def client_ip(request: Request) -> str:
+    """The address a request really came from, for the per-IP login limit (D-66).
+
+    Behind a proxy (Render), every request arrives from the proxy's own address, so we read X-Forwarded-For
+    instead. Each proxy APPENDS the address it received the request from, so the entry added by the proxy
+    nearest the internet is counted from the right: with N trusted proxies it is the N-th from the end.
+    Entries further left were written by the client and can be anything, so they are never used.
+    """
+    peer = request.client.host if request.client else "unknown"
+    hops = settings.trusted_proxy_hops
+    if hops == 0:
+        return peer  # no proxy: the header, if any, came from the client and is ignored
+    header = request.headers.get("x-forwarded-for", "")
+    entries = [entry.strip() for entry in header.split(",") if entry.strip()]
+    if len(entries) < hops:
+        return peer  # not what our proxies would send; fall back to the connection's address
+    return entries[-hops]

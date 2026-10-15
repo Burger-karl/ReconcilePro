@@ -1,6 +1,6 @@
 """/api/v1/auth routes. Thin: validate (schemas), call the service, shape the response."""
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Response, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response, status
 
 from app.auth import google, service
 from app.auth.models import User, Workspace
@@ -18,7 +18,7 @@ from app.auth.schemas import (
     WorkspaceRead,
 )
 from app.core.deps import CurrentUser, SessionDep
-from app.core.limits import login_attempts
+from app.core.limits import client_ip, login_attempts, login_ip_attempts
 from app.core.security import create_access_token
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -58,11 +58,12 @@ def register(data: RegisterRequest, session: SessionDep) -> TokenResponse:
 
 
 @router.post("/login")
-def login(data: LoginRequest, session: SessionDep) -> TokenResponse:
+def login(data: LoginRequest, request: Request, session: SessionDep) -> TokenResponse:
     email = service.normalise_email(data.email)
+    ip = client_ip(request)
     # Checked BEFORE the password, so while blocked even the right password gets no answer:
-    # an attacker can't keep guessing and spot the one attempt that differs (D-42).
-    if login_attempts.is_blocked(email):
+    # an attacker can't keep guessing and spot the one attempt that differs (D-42, D-66).
+    if login_attempts.is_blocked(email) or login_ip_attempts.is_blocked(ip):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many failed sign-in attempts. Try again in 15 minutes, or reset your password.",
@@ -70,8 +71,11 @@ def login(data: LoginRequest, session: SessionDep) -> TokenResponse:
     user = service.authenticate(session, email, data.password)
     if user is None:
         login_attempts.record_failure(email)
+        login_ip_attempts.record_failure(ip)
         # Same message whether the email or the password is wrong.
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+    # Only the email's count is cleared. The address's count stays, or an attacker with one real account
+    # could sign into it now and then to wipe the record of guessing at everyone else's (D-66).
     login_attempts.clear(email)
     return token_response(user)
 
