@@ -18,7 +18,7 @@ Conventions:
 | Method | Path | Body / query | Returns | Notes |
 |--------|------|--------------|---------|-------|
 | POST | `/api/v1/auth/register` *public* | `email, password, workspace_name` | `{access_token, user}` | creates workspace + owner user in one DB transaction |
-| POST | `/api/v1/auth/login` *public* | `email, password` | `{access_token, user}` | 401 same message for wrong email or password; 429 after 10 failures for that email in 15 minutes (D-42) |
+| POST | `/api/v1/auth/login` *public* | `email, password` | `{access_token, user}` | 401 same message for wrong email or password; 429 after 10 failures for that email, or 30 from that IP address, in 15 minutes (D-42, D-66) |
 | POST | `/api/v1/auth/google/register` *public* | `credential, workspace_name` | 201 `{access_token, user}` | `credential` = Google ID token from the sign-in button. Creates workspace + owner with no password. 409 if that Google account or email is already registered (D-37) |
 | POST | `/api/v1/auth/google/login` *public* | `credential` | `{access_token, user}` | finds the user by Google `sub`; links a password account with the same email only when Google owns the address (D-38). 401 if no account |
 | POST | `/api/v1/auth/forgot-password` *public* | `email` | 202 `{detail}` | same answer whether or not the email exists; emails a 30-minute single-use link `{FRONTEND_URL}/reset-password#token=…`; at most 3 per account per hour (D-39, D-40, D-42) |

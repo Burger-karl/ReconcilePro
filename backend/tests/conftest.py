@@ -23,7 +23,7 @@ from sqlmodel import Session, SQLModel, create_engine
 import app.db_models  # noqa: F401  (registers every table on SQLModel.metadata)
 from app.core.config import settings
 from app.core.db import get_session
-from app.core.limits import login_attempts
+from app.core.limits import login_attempts, login_ip_attempts
 from app.main import app
 
 
@@ -57,8 +57,9 @@ def session(engine: Engine) -> Iterator[Session]:
 def client(session: Session) -> Iterator[TestClient]:
     """HTTP client for the API that uses the rolled-back test session."""
     app.dependency_overrides[get_session] = lambda: session
-    # Failed logins are counted in memory per email; start every test from zero.
+    # Failed logins are counted in memory per email and per address; start every test from zero.
     login_attempts.reset()
+    login_ip_attempts.reset()
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()

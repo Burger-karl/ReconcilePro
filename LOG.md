@@ -305,3 +305,9 @@ Template (copy per day):
 - **Broke:** Claude Code stopped the web and API servers twice because the laptop ran low on memory. Nothing wrong with the apps; next time I run them in my own terminals.
 - **Learned:** Some files (`globals.css`, `DECISIONS.md`) hold several features' changes, so a perfectly clean one-feature-per-commit split would need hunk-by-hunk staging. I kept shared files in the second commit instead.
 - **Next:** Deploy: Render (API + DB) and Vercel (web). Production needs a strong `JWT_SECRET` (32+ bytes), the Paystack and Resend keys, `GOOGLE_CLIENT_ID`, `FRONTEND_URL`, and the Paystack webhook pointed at `/api/v1/webhooks/paystack`. Still to check: the 375px phone layout.
+
+### Day 10 — 2026-10-15: login limit per IP address
+- **Built:** On `feat/login-ip-limit`, test-first (7 new tests failed, then passed; 413 backend tests pass). `/auth/login` already blocked one email after 10 wrong passwords (D-42); now it also blocks an IP address after 30 failed logins in 15 minutes, whatever the emails (D-66). A successful login doesn't clear the address's count. `client_ip()` reads `X-Forwarded-For` from the right, controlled by a new `TRUSTED_PROXY_HOPS` setting (0 locally = header ignored).
+- **Broke:** Postgres didn't come back after the PC restarted: a stale `postmaster.pid`. Removed it; it recovered on a new port (49419).
+- **Learned:** Password spraying (one password, many emails) never trips a per-email limit. And `X-Forwarded-For` is partly written by the client: only the entries our own proxies append, counted from the right, can be trusted. Uvicorn's `--forwarded-allow-ips="*"` takes the leftmost entry, the spoofable one.
+- **Next:** On Render, check which header entry is my real address and set `TRUSTED_PROXY_HOPS`. Commit and merge this branch.

@@ -575,3 +575,23 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
   hand-roll equivalents). Accordion and Tabs were added with the shadcn CLI.
 - **Honesty:** no testimonials, customer logos or numbers we can't back; the preview uses the seed demo's
   figures, the FAQ describes only what exists today (two statement layouts, not named banks).
+
+## D-66 — A second login limit, per IP address
+- **Decision:** besides the per-email limit (D-42), `/auth/login` counts failed logins per client IP address:
+  after 30 in 15 minutes, every login from that address answers 429 until the window passes. Same in-memory
+  sliding-window class (`LoginAttempts`, now keyed by any string), checked before the password. A successful
+  login clears the email's count but NOT the address's.
+- **Why:** "password spraying" (one common password tried against many emails) never reaches 10 failures for
+  any one email, so D-42 alone doesn't stop it. 30 is higher than 10 because an office or mobile network can put
+  many honest people behind one address. Not clearing on success stops an attacker who owns one real account
+  from signing into it every few guesses to wipe the count.
+- **Which address:** `client_ip()` in `app/core/limits.py`. Behind Render's proxy every request comes from the
+  proxy, so the real address is read from `X-Forwarded-For`. Clients can write their own entries at the LEFT of
+  that header and Render keeps them, so we count from the right: with `TRUSTED_PROXY_HOPS=N` we take the N-th
+  entry from the end, the one our own proxy added. `0` (the default, local) ignores the header entirely.
+- **Deploy check:** Render's documentation doesn't state how many hops there are. Before relying on it, log
+  `X-Forwarded-For` for one request from a known address and set `TRUSTED_PROXY_HOPS` so `client_ip()` returns
+  it. Wrong in one direction, every user shares the proxy's address and one attacker can block all logins for
+  15 minutes; wrong in the other, an attacker can pick a new address per guess.
+- **Rejected:** `uvicorn --proxy-headers --forwarded-allow-ips="*"`: with every hop trusted it uses the
+  LEFTMOST entry, which the client writes. A library (slowapi) plus Redis: more moving parts than one process needs.
