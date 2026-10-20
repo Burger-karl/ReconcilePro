@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 
+import { ServiceWorker } from "@/components/service-worker";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,6 +26,16 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "ReconcilePro",
   description: "Match bank credits and Paystack payments to invoices automatically.",
+  // iPhones ignore most of app/manifest.ts; these tags make "Add to Home Screen" open its own window (D-68).
+  appleWebApp: { capable: true, title: "ReconcilePro", statusBarStyle: "default" },
+};
+
+// Colour of the phone's status bar and the installed app's title bar: the page background, light or dark.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#020617" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -42,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <AuthProvider>{children}</AuthProvider>
           </TooltipProvider>
           <Toaster />
+          <ServiceWorker />
         </ThemeProvider>
       </body>
     </html>
