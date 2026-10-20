@@ -37,7 +37,18 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   async headers() {
-    return [{ source: "/(.*)", headers: [{ key: "Content-Security-Policy", value: csp }] }];
+    return [
+      { source: "/(.*)", headers: [{ key: "Content-Security-Policy", value: csp }] },
+      // The service worker (D-68): never cached by the browser, so a fixed version reaches users on their
+      // next visit instead of whenever an old copy expires.
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        ],
+      },
+    ];
   },
 };
 

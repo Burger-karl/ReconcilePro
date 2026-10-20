@@ -615,3 +615,19 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
 - **Rejected for now:** an httpOnly cookie. Scripts can't read it, but the web app (Vercel) and API (Render) are
   on different sites, so it would be a third-party cookie (blocked by Safari) unless `/api` is proxied through
   Next.js, and it needs CSRF protection. The right next step if there is time.
+
+## D-68 — An installable PWA that caches no workspace data
+- **Decision:** the web app can be installed on a phone or desktop. `app/manifest.ts` (name, `start_url:
+  /dashboard`, `display: standalone`, icons in `public/icons/`, one of them maskable), `appleWebApp` tags and a
+  light/dark `themeColor` in `app/layout.tsx`. `public/sw.js`, registered by `components/service-worker.tsx` in
+  production builds only, caches exactly one file, `public/offline.html`, and only answers page loads: when one
+  fails for lack of network, it shows that page. API calls, scripts and images never pass through it.
+  `next.config.ts` serves `sw.js` with `Cache-Control: no-cache` so a new version reaches users on their next visit.
+- **Why:** installing gives the accountant an app icon and its own window for almost no code. Caching the API
+  was rejected on purpose: devices may be shared, and signing out clears SWR's memory (D-67) but would not
+  clear a service-worker cache; balances shown offline could also be stale and mislead someone reconciling.
+- **Known limits:** nothing works offline except the "You're offline" page. iPhones have no install prompt
+  (Share → Add to Home Screen). Installing from another device needs HTTPS, so it is only testable after the
+  Vercel deploy; Chrome treats `localhost` as secure, so local testing works.
+- **Rejected:** Serwist/next-pwa (a dependency and a build step for one cached file). Push notifications
+  (VAPID keys, a subscriptions table, a sender in the API) are a new feature, left for later.
