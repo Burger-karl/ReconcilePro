@@ -9,7 +9,7 @@
  * URL. That URL proves nothing (anyone can type it), so this page never says "paid" because of it: it shows
  * "confirming" and re-asks the API until the Paystack webhook has recorded the money (backend D-30).
  *
- * Look (D-62): teal line on top of the card, light teal wash behind it, the card fades up, the paid tick pops in.
+ * Look (D-71): orange line on top of the card, light orange wash behind it, the card fades up, the paid tick pops in.
  */
 
 import { Check, CircleAlert, Copy, Loader2 } from "lucide-react";

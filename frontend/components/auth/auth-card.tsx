@@ -16,16 +16,15 @@ export function AuthCard({
   footer?: React.ReactNode;
 }) {
   return (
-    // A thin teal-to-cyan line across the top ties the card to the brand (D-62, D-64).
+    // CEK style (D-71): a white card with 20px corners and a soft shadow on the beige page.
     // "stagger" (globals.css): the Google button, the form fields and the button fade up one after another.
-    <Card className="relative overflow-hidden rounded-2xl shadow-xl shadow-slate-900/5">
-      <span className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-teal-500 via-cyan-400 to-teal-500" aria-hidden />
-      <CardHeader className="pt-2">
-        <CardTitle className="text-2xl tracking-tight">{title}</CardTitle>
+    <Card className="rounded-3xl py-8">
+      <CardHeader className="px-8">
+        <CardTitle className="text-3xl font-black tracking-tight">{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
-      <CardContent className="stagger flex flex-col gap-5">{children}</CardContent>
-      {footer && <CardFooter className="justify-center text-sm text-muted-foreground">{footer}</CardFooter>}
+      <CardContent className="stagger flex flex-col gap-5 px-8">{children}</CardContent>
+      {footer && <CardFooter className="justify-center bg-transparent px-8 text-sm text-muted-foreground">{footer}</CardFooter>}
     </Card>
   );
 }

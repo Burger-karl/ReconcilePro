@@ -341,3 +341,10 @@ Template (copy per day):
 - **Fixed:** A new Postgres in `.localdb/` inside the project (binaries and data, git-ignored), with **two databases**: `reconcile_dev` for the app and `reconcile_test` for pytest. So the test suite no longer wipes my demo data.
 - **Learned:** Two filters showing "the same" invoices must share one function, and a test should prove the list and the tile agree. Running two pytest runs at once against one database makes them break each other.
 - **Next:** Click through the new links in the browser (`docs/TEST.md` 5.5–5.8). Commit and merge.
+
+### Day 12 (continued): a new look, from my CEK Alpha site
+- **Built:** On `feat/cek-redesign` (D-71). I asked for ReconcilePro to look like the accounting-firm site I built (CEK Alpha). A demo first (approved after fixing the logo gap, the navbar button text and the hero), then the real thing: orange/beige/near-black tokens, Roboto + Nunito + Ubuntu, pill buttons, a CEK-style landing page with my CEK photos and an example "today's import" card in the hero, a photo panel on the auth pages, a full dark sidebar with labels, a white top bar per screen, and an Overview welcome banner with orange figure tiles.
+- **Broke:** The logo read "Reconcile Pro": the logo is a flex row with a gap, and "Reconcile" and "Pro" were two flex items. Now one span. The navbar button's text was grey because the nav's link colour beat the button's.
+- **Learned:** White text on CEK's orange is under the 4.5:1 contrast rule, so orange is only for bold labels and large text; small orange text uses a darker orange.
+- **Next:** Look at every screen in light and dark, then commit and merge.
+- **Also built:** an eye button on every password box (login, register, reset), using shadcn's `input-group`; and an "E-invoicing: coming soon" section on the landing page (D-72; first an app page, moved at my request) showing the planned Sage 200/300 → Access Point Provider (e.g. Interswitch) → FIRS MBS (NRS) flow. It's only a page: FIRS integration stays under "Later".

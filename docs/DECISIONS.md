@@ -663,3 +663,35 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
   status tab clears it, so the two filters never combine silently.
 - **Rejected:** a date range on "Collected this month". The Matched tab lists every matched line, not only this
   month's; good enough for a click-through, and the tile itself stays exact.
+
+## D-71 — The CEK Alpha look: orange, beige, near-black, photos (replaces D-62, D-63, D-64, D-65, D-69's look)
+- **Context:** the owner built a site for an accounting firm (CEK Alpha Consultants) and wants ReconcilePro to look
+  like it. A demo was published and approved before any code changed.
+- **Decision:** CEK's palette and type. Orange `#ea7c00` for brand and actions, a warm beige canvas `#f5f2ef`,
+  white cards with a soft shadow (`--shadow-card`), near-black (`#060606`) for dark sections and the sidebar.
+  Fonts: Roboto (text), Nunito (headings), Ubuntu (navigation and buttons), IBM Plex Mono kept for narrations.
+  Buttons are pills. The landing page follows CEK's sections (photo hero, About with badges, How it works, dark
+  call to action, FAQ, dark footer) with the owner's CEK photos in `public/images/`. The app gets a full dark
+  sidebar with labels (replacing layout C's icon rail, D-50), a white top bar per screen, an Overview welcome
+  banner, and orange figure tiles; the auth pages a photo panel. The logo's "Pro" is orange, and the wordmark is
+  one piece of text so a flex gap can't split it.
+- **Accessibility:** white on `#ea7c00` is about 2.9:1, so orange carries only bold button labels and large text;
+  small orange text uses `--brand-ink` (`#b45f00`, about 4.6:1 on white). Grey text (`#6b6560`) is about 5:1 on
+  the beige canvas. Status colours (paid, part paid, overdue) are unchanged.
+- **Removed:** the floating cards, drifting glows, tilts, the scrolling strip, the card tints (D-69) and their CSS.
+- **Photos:** the owner's own CEK site images, used with the owner's say-so.
+
+## D-72 — An "E-invoicing: coming soon" section on the landing page, and nothing more
+- **Decision:** a static section on the landing page (`#e-invoicing`, linked from the header and footer; first
+  built as an app page, then moved here at the owner's request) describing the
+  planned flow: invoices retrieved from Sage 200 / Sage 300 → checked and formatted by ReconcilePro → an
+  accredited Access Point Provider (for example Interswitch) → the FIRS MBS e-invoicing platform, now under the
+  Nigeria Revenue Service (NRS), which validates each invoice and returns it signed with an IRN and QR code → stored
+  next to the invoice and matched to payments as today.
+- **Why only a page:** FIRS integration is listed under "Later" in the project rules, and it needs things the MVP
+  doesn't have: line items (D-04 left them out), TINs on customers, and an Access Point Provider account. The page
+  makes no claims of a connection or partnership and says so at the bottom; it sends nothing anywhere.
+- **Sources for the wording:** Interswitch's announcement that FIRS accredited it as an Access Point Provider for
+  the MBS e-invoicing platform (interswitchgroup.com/news/interswitch-named-firs-access-point-provider-for-mandatory-e-invoicing),
+  Interswitch's FIRS e-invoicing docs (docs.interswitchgroup.com/docs/firs-e-invoicing), and KPMG's FIRS
+  e-invoicing readiness deck (IRN and QR code).

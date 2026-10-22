@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Overview (slice F2, pages/dashboard.md): four figures, collections by week, ageing, recent activity.
+ * Overview (slice F2, pages/dashboard.md): a welcome banner (D-71), four figures, collections by week, ageing,
+ * recent activity.
  * Every number comes from the API already derived (backend D-48); this page only formats and lays out.
  */
 
@@ -13,6 +14,7 @@ import { AgeingList } from "@/components/dashboard/ageing-list";
 import { CollectionsChart } from "@/components/dashboard/collections-chart";
 import { KpiTiles } from "@/components/dashboard/kpi-tiles";
 import { RecentActivity } from "@/components/dashboard/recent-activity";
+import { WelcomeBanner } from "@/components/dashboard/welcome-banner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { API, type Schemas } from "@/lib/api";
@@ -30,7 +32,7 @@ export default function OverviewPage() {
 
   return (
     <Screen title="Overview" description="Where your money is: owed, collected, and what needs you.">
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-6">
         {failed && (
           <Alert variant="destructive">
             <CircleAlert aria-hidden />
@@ -42,8 +44,9 @@ export default function OverviewPage() {
             </AlertDescription>
           </Alert>
         )}
+        <WelcomeBanner summary={summary.data} />
         <KpiTiles summary={summary.data} />
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-3">
           <CollectionsChart weeks={collections.data} />
           <AgeingList buckets={ageing.data} />
         </div>

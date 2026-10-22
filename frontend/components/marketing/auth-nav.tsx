@@ -14,16 +14,17 @@ export function AuthNav() {
     <nav className="flex items-center gap-2" aria-label="Account">
       <ThemeToggle />
       {auth.status === "signed-in" ? (
-        <Button asChild>
+        <Button asChild className="h-10 px-6 text-[15px]">
           <Link href="/dashboard">Open app</Link>
         </Button>
       ) : (
         <>
-          <Button asChild variant="ghost">
-            <Link href="/login">Sign in</Link>
-          </Button>
-          <Button asChild className="hidden sm:inline-flex">
-            <Link href="/register">Create free workspace</Link>
+          <Link href="/login" className="px-2 font-nav text-[15px] text-muted-foreground transition-colors hover:text-brand-ink">
+            Sign in
+          </Link>
+          {/* CEK's orange pill. White text, also on hover, when it turns near-black. */}
+          <Button asChild className="hidden h-10 px-6 text-[15px] sm:inline-flex">
+            <Link href="/register">Get Started</Link>
           </Button>
         </>
       )}

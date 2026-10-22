@@ -9,7 +9,7 @@
  */
 
 // Change the version when offline.html changes, so the old copy is replaced.
-const CACHE = "reconcilepro-offline-v1";
+const CACHE = "reconcilepro-offline-v2";
 // offline.html is self-contained (no images or stylesheets): only page loads come through here, so
 // anything it linked to would need the network it doesn't have.
 const OFFLINE_FILES = ["/offline.html"];

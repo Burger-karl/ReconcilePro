@@ -91,6 +91,8 @@ Sign in with `demo@adaezefoods.ng` / `demo-password-1`.
       faint coloured glows. Switch back.
 - [ ] **1.3** Click each tab in **Who it's for** (Business owner, Accountant, Your customer). The card text changes.
 - [ ] **1.4** Open and close a few **FAQ** questions.
+- [ ] **1.4b** Click **E-invoicing** in the header. The page scrolls to a "Coming soon" section showing the planned
+      Sage 200 / Sage 300 → Access Point Provider (e.g. Interswitch) → FIRS MBS (NRS) flow. Nothing in it is clickable.
 - [ ] **1.5** Make the window narrow (or DevTools → phone icon, 375px wide). Nothing is cut off and there's no
       sideways scrolling.
 

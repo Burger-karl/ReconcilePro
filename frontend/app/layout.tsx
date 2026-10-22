@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { IBM_Plex_Mono, Nunito, Roboto, Ubuntu } from "next/font/google";
 
 import { ServiceWorker } from "@/components/service-worker";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -10,10 +10,21 @@ import "./globals.css";
 
 // next/font downloads the fonts at build time and serves them from our own domain,
 // so there is no request to Google from the browser and no layout shift while they load.
-const plexSans = IBM_Plex_Sans({
-  variable: "--font-plex-sans",
+// The CEK Alpha pairing (DECISIONS D-71): Roboto for text, Nunito for headings, Ubuntu for navigation and buttons.
+const roboto = Roboto({
+  variable: "--font-roboto",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["300", "400", "500", "700"],
+});
+const nunito = Nunito({
+  variable: "--font-nunito",
+  subsets: ["latin"],
+  weight: ["600", "700", "800", "900"],
+});
+const ubuntu = Ubuntu({
+  variable: "--font-ubuntu",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
 });
 
 // Mono is for raw bank narrations, references and invoice numbers (design-system MASTER.md §2).
@@ -34,7 +45,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#020617" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d0d0d" },
   ],
 };
 
@@ -43,7 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // suppressHydrationWarning: next-themes adds the "dark" class before React hydrates.
     <html
       lang="en"
-      className={`${plexSans.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${roboto.variable} ${nunito.variable} ${ubuntu.variable} ${plexMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">

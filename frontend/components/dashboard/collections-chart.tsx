@@ -2,7 +2,7 @@
 
 /**
  * Money matched to invoices per week (backend D-48), last 8 weeks, as columns.
- * dataviz rules: one series → no legend (the title names it); one colour (teal-600 / teal-400 in dark, D-62;
+ * dataviz rules: one series → no legend (the title names it); one colour (CEK orange, D-71;
  * contrast ≥ 3:1 checked with the palette validator); columns ≤ 24px with a 4px rounded top, square at
  * the baseline; hairline horizontal grid; compact ₦ on the axis, full ₦ to the kobo in the tooltip and table.
  */
@@ -16,7 +16,7 @@ import type { Schemas } from "@/lib/api";
 import { compactNaira, formatNaira } from "@/lib/money";
 
 const config = {
-  collected_kobo: { label: "Collected", theme: { light: "#0d9488", dark: "#2dd4bf" } }, // teal-600 / teal-400 (D-62)
+  collected_kobo: { label: "Collected", theme: { light: "#ea7c00", dark: "#f08a1c" } }, // CEK orange (D-71)
 } satisfies ChartConfig;
 
 const shortDate = new Intl.DateTimeFormat("en-NG", { day: "numeric", month: "short" });
@@ -86,8 +86,8 @@ export function CollectionsChart({ weeks }: { weeks: Schemas["WeekCollected"][] 
                 <Bar
                   dataKey="collected_kobo"
                   fill="var(--color-collected_kobo)"
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={24}
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={32}
                   isAnimationActive={false}
                 />
               </BarChart>

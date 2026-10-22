@@ -13,6 +13,7 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
+      className="size-9 bg-muted hover:bg-accent"
       // Icon-only button, so it needs a text label for screen readers (MASTER.md anti-patterns).
       aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
       onClick={() => setTheme(isDark ? "light" : "dark")}
