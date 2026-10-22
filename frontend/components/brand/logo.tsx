@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
  * The ReconcilePro logo (DECISIONS D-65): the owner's "R" mark (public/brand/logo-mark.png, cut from the
  * uploaded logo) plus the wordmark as live text (logotypes are exempt from WCAG contrast rules; the link
  * still has an accessible name). Text, not the PNG wordmark: the PNG's navy letters would
- * disappear on dark backgrounds, while text follows the theme. "Pro" keeps the logo's green.
+ * disappear on dark backgrounds, while text follows the theme. "Pro" is CEK orange (D-71), and the word is one
+ * piece of text, so the flex gap can never split "Reconcile" from "Pro".
  *
  * `onDark`: for navy surfaces (app rail, auth brand panel, dark cards). The mark then sits on a white tile,
  * because its navy "R" would blend into the background.
@@ -43,11 +44,8 @@ export function Logo({
         <Image src="/brand/logo-mark.png" alt="" width={onDark ? size - 8 : size} height={onDark ? size - 8 : size} priority />
       </span>
       {wordmark && (
-        <span className={cn("text-lg", onDark ? "text-white" : "text-[#0b2a6f] dark:text-white")}>
-          Reconcile
-          <span className="bg-linear-to-r from-emerald-500 to-green-600 bg-clip-text text-transparent dark:from-emerald-300 dark:to-green-400">
-            Pro
-          </span>
+        <span className={cn("font-heading text-xl font-extrabold whitespace-nowrap", onDark ? "text-white" : "text-foreground")}>
+          Reconcile<span className="text-brand">Pro</span>
         </span>
       )}
     </Link>

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Every signed-in screen: the session check, then layout C's shell (icon rail + screen).
+ * Every signed-in screen: the session check, then the CEK-style shell (dark sidebar + screen, D-71).
  *
  * The check here is for the person using the app (send them to sign in instead of showing broken pages).
  * It is NOT the security: the API refuses every request without a valid token (backend invariant 8).
@@ -11,7 +11,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { SWRConfig } from "swr";
 
-import { Rail } from "@/components/app-shell/rail";
+import { AppSidebar } from "@/components/app-shell/app-sidebar";
+import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -41,7 +42,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Same shape as the real shell, so nothing jumps when it arrives (MASTER.md: skeletons reserve space).
     return (
       <div className="flex flex-1" aria-busy="true" aria-label="Loading">
-        <Skeleton className="w-12 rounded-none" />
+        <Skeleton className="hidden w-64 rounded-none md:block" />
         <div className="flex flex-1 flex-col gap-4 p-6">
           <Skeleton className="h-7 w-48" />
           <Skeleton className="h-40 w-full" />
@@ -60,16 +61,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         },
       }}
     >
-      {/* Always collapsed to icons on desktop: layout C has a rail, not a full sidebar. */}
       {/* The shell is exactly one screen tall; each screen scrolls inside its own area (so Match's two
-          panes can scroll independently, and the rail never scrolls away). */}
-      <SidebarProvider open={false} className="h-svh">
-        <Rail />
+          panes can scroll independently, and the sidebar never scrolls away). */}
+      <SidebarProvider className="h-svh">
+        <AppSidebar />
         <SidebarInset className="min-h-0 min-w-0 overflow-hidden bg-wash">
-          {/* Phones: the rail becomes a slide-out menu opened from this bar. */}
-          <div className="flex items-center gap-2 border-b px-3 py-2 md:hidden">
+          {/* Phones: the sidebar becomes a slide-out menu opened from this bar. */}
+          <div className="flex items-center gap-2 border-b bg-card px-3 py-2 md:hidden">
             <SidebarTrigger aria-label="Open navigation" />
-            <span className="font-semibold tracking-tight">Reconcile</span>
+            <Logo href="/dashboard" size={26} />
           </div>
           {children}
         </SidebarInset>

@@ -15,7 +15,7 @@ export default function manifest(): MetadataRoute.Manifest {
     // Its own window, without the browser's address bar.
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#0f766e", // --primary (teal-700) in globals.css
+    theme_color: "#ea7c00", // --primary (CEK orange) in globals.css
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },

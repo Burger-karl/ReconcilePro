@@ -39,7 +39,7 @@ export function KpiTiles({ summary }: { summary: Schemas["Summary"] | undefined 
       <Tile
         index={0}
         icon={Wallet}
-        tone="teal"
+        tone="plain"
         label="Outstanding"
         target={summary.outstanding_kobo}
         format={formatNaira}
@@ -49,7 +49,7 @@ export function KpiTiles({ summary }: { summary: Schemas["Summary"] | undefined 
       <Tile
         index={1}
         icon={TrendingUp}
-        tone="green"
+        tone="plain"
         label="Collected this month"
         target={summary.collected_this_month_kobo}
         format={formatNaira}
@@ -59,7 +59,7 @@ export function KpiTiles({ summary }: { summary: Schemas["Summary"] | undefined 
       <Tile
         index={2}
         icon={Gauge}
-        tone="sky"
+        tone="plain"
         label="Auto-match rate"
         target={summary.auto_match_rate}
         format={(rate) => `${rate}%`}
@@ -74,8 +74,8 @@ export function KpiTiles({ summary }: { summary: Schemas["Summary"] | undefined 
       <Tile
         index={3}
         icon={Inbox}
-        // Amber only when something is waiting: the same "needs review" colour as the rail badge.
-        tone={summary.needs_review_count === 0 ? "teal" : "amber"}
+        // The solid orange tile, like CEK's orange badge, only when something is waiting (same as the sidebar badge).
+        tone={summary.needs_review_count === 0 ? "plain" : "highlight"}
         label="Needs review"
         target={summary.needs_review_count}
         format={String}
@@ -86,12 +86,10 @@ export function KpiTiles({ summary }: { summary: Schemas["Summary"] | undefined 
   );
 }
 
-// Icon chip colours. Green = money in, amber = waiting on someone; teal and sky are neutral brand tints.
+// CEK style (D-71): white tiles with an orange icon circle; the "highlight" tile is solid orange with white text.
 const TONES = {
-  teal: "bg-teal-50 text-teal-700 dark:bg-teal-400/15 dark:text-teal-300",
-  green: "bg-green-50 text-green-700 dark:bg-green-400/15 dark:text-green-300",
-  sky: "bg-sky-50 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
-  amber: "bg-amber-50 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300",
+  plain: { card: "", icon: "bg-brand-soft text-brand", muted: "text-muted-foreground" },
+  highlight: { card: "bg-primary text-primary-foreground ring-0", icon: "bg-white/20 text-white", muted: "text-white/90" },
 } as const;
 
 function Tile({
@@ -116,20 +114,20 @@ function Tile({
 }) {
   const shown = useCountUp(target ?? 0);
   const body = (
-    <Card className={cn("h-full gap-1 p-5", href && "hover-lift")}>
+    <Card className={cn("h-full gap-1 p-5", TONES[tone].card, href && "hover-lift")}>
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</p>
-        <span className={cn("flex size-8 items-center justify-center rounded-lg", TONES[tone])}>
-          <Icon className="size-4" aria-hidden />
+        <p className={cn("font-nav text-xs tracking-wider uppercase", TONES[tone].muted)}>{label}</p>
+        <span className={cn("flex size-11 items-center justify-center rounded-full", TONES[tone].icon)}>
+          <Icon className="size-5" aria-hidden />
         </span>
       </div>
       {/* 30px, tabular figures so the tiles line up (pages/dashboard.md). nowrap: an amount is read as one unit.
           Screen readers read the final figure once (sr-only), never the steps of the count. */}
-      <p className="text-3xl font-semibold tracking-tight whitespace-nowrap tabular-nums">
+      <p className="font-heading text-3xl font-black tracking-tight whitespace-nowrap tabular-nums">
         <span className="sr-only">{target === null ? "none" : format(target)}</span>
         <span aria-hidden>{target === null ? "—" : format(shown)}</span>
       </p>
-      <p className="flex items-center gap-1 text-sm text-muted-foreground">
+      <p className={cn("flex items-center gap-1 text-sm", TONES[tone].muted)}>
         {context}
         {href && <ArrowRight className="size-3.5 shrink-0" aria-hidden />}
       </p>
@@ -147,7 +145,7 @@ function Tile({
     <Link
       href={href}
       style={style}
-      className="animate-rise rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      className="animate-rise rounded-2xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
       {body}
     </Link>

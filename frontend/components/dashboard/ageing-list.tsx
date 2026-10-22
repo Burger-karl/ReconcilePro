@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 type Bucket = Schemas["AgeingBucket"]["bucket"];
 
 export const BUCKETS: Record<Bucket, { label: string; bar: string }> = {
-  current: { label: "Not yet due", bar: "bg-brand" }, // brand teal: on time is the healthy bucket (D-62)
+  current: { label: "Not yet due", bar: "bg-brand" }, // brand orange: on time is the healthy bucket (D-71)
   "1_30": { label: "1–30 days late", bar: "bg-amber-500 dark:bg-amber-400" },
   "31_60": { label: "31–60 days late", bar: "bg-red-500 dark:bg-red-400" },
   "60_plus": { label: "Over 60 days late", bar: "bg-red-800 dark:bg-red-700" },

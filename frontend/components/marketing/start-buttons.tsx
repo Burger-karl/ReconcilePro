@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * The landing page's main buttons. A visitor gets "Create free workspace" (and, in the hero, "Sign in");
+ * The landing page's main buttons. A visitor gets "Get Started" (and, with withSignIn, "Sign in");
  * someone already signed in gets "Open your dashboard" instead, so no button leads to a page that would only
  * say "you're already signed in". Until the browser knows (auth loading), the visitor version shows, which
  * is also what the server-rendered HTML contains.
@@ -14,14 +14,14 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
-// Landing-page buttons: 44px tall (this shadcn style's "lg" is only 36px), easy to hit on a phone.
-const CTA = "h-11 px-5 text-base";
+// Landing-page buttons: 44px tall (this shadcn style's "lg" is only 36px), easy to hit on a phone; CEK pills.
+const CTA = "h-11 px-6 text-base";
 
 export function StartButtons({
   primaryClassName,
   withSignIn = false,
 }: {
-  /** Extra classes for the main button (the closing band uses white on navy). */
+  /** Extra classes for the main button (on dark sections it turns white on hover). */
   primaryClassName?: string;
   /** The hero also offers "Sign in" next to the main button. */
   withSignIn?: boolean;
@@ -31,7 +31,7 @@ export function StartButtons({
     <>
       <Button asChild size="lg" className={cn(CTA, "group", primaryClassName)}>
         <Link href={signedIn ? "/dashboard" : "/register"}>
-          {signedIn ? "Open your dashboard" : "Create free workspace"}
+          {signedIn ? "Open your dashboard" : "Get Started"}
           {/* Slides right on hover: transform only, the button keeps its size. */}
           <ArrowRight className="transition-transform duration-200 group-hover:translate-x-1" aria-hidden />
         </Link>

@@ -15,7 +15,7 @@ import {
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
 
-/** Bottom of the rail: who is signed in, to which workspace; theme and sign out. */
+/** Bottom of the sidebar: who is signed in, to which workspace; theme and sign out. */
 export function UserMenu() {
   const auth = useAuth();
   const router = useRouter();
@@ -34,8 +34,8 @@ export function UserMenu() {
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <SidebarMenuButton size="lg" tooltip={`${workspace.name} · ${user.email}`} aria-label="Account menu">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sidebar-accent text-sm font-semibold text-sidebar-accent-foreground">
+            <SidebarMenuButton size="lg" tooltip={`${workspace.name} · ${user.email}`} aria-label="Account menu" className="h-14 rounded-xl bg-white/5 hover:bg-white/10">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary font-heading text-base font-black text-primary-foreground">
                 {initial}
               </span>
               <span className="flex min-w-0 flex-col text-left leading-tight">

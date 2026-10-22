@@ -1,7 +1,9 @@
+import { ThemeToggle } from "@/components/theme-toggle";
+
 /**
- * One signed-in screen in layout C: a title bar, the main work area, and an optional inspector on the
- * right that explains whatever is selected (DECISIONS D-50). The inspector hides below 1024px.
- * The title bar has a light teal wash and the body fades up when the screen opens (D-62).
+ * One signed-in screen: a white top bar (breadcrumb, title, actions), the main work area on the beige
+ * canvas, and an optional inspector on the right that explains whatever is selected (DECISIONS D-50).
+ * CEK style (D-71): Nunito titles, white surfaces with a soft shadow. The inspector hides below 1024px.
  */
 export function Screen({
   title,
@@ -22,17 +24,21 @@ export function Screen({
   return (
     <div className="flex min-h-0 flex-1">
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-linear-to-r from-brand-soft to-background px-4 py-4 sm:px-6">
+        <header className="relative z-10 flex flex-wrap items-center justify-between gap-3 bg-card px-4 py-4 shadow-[0_2px_15px_rgb(0_0_0/0.05)] sm:px-8">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+            <p className="font-nav text-xs text-muted-foreground">Home / {title}</p>
+            <h1 className="text-2xl font-black tracking-tight">{title}</h1>
             {description && <p className="text-sm text-muted-foreground">{description}</p>}
           </div>
-          {actions && <div className="flex items-center gap-2">{actions}</div>}
+          <div className="flex items-center gap-2">
+            {actions}
+            <ThemeToggle />
+          </div>
         </header>
-        <div className={flush ? "animate-rise flex min-h-0 flex-1" : "animate-rise flex-1 overflow-auto p-4 sm:p-6"}>{children}</div>
+        <div className={flush ? "animate-rise flex min-h-0 flex-1" : "animate-rise flex-1 overflow-auto p-4 sm:p-8"}>{children}</div>
       </div>
       {inspector && (
-        <aside className="hidden w-96 shrink-0 overflow-y-auto border-l bg-canvas lg:block">{inspector}</aside>
+        <aside className="hidden w-96 shrink-0 overflow-y-auto border-l bg-card lg:block">{inspector}</aside>
       )}
     </div>
   );
