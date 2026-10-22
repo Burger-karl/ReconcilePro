@@ -6,7 +6,8 @@
  * screens; on phones the selected event's details open under its row.
  */
 
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import useSWR from "swr";
 
 import { Screen } from "@/components/app-shell/screen";
@@ -34,7 +35,20 @@ const TABS = [
 const PAGE = 50;
 
 export default function AuditPage() {
-  const [type, setType] = useState<(typeof TABS)[number]["type"]>("");
+  // useSearchParams() needs a Suspense boundary in the App Router (Next 16 docs: use-search-params).
+  return (
+    <Suspense>
+      <AuditScreen />
+    </Suspense>
+  );
+}
+
+function AuditScreen() {
+  // The dashboard's "Auto-match rate" tile links here with ?type=allocation (D-70).
+  const searchParams = useSearchParams();
+  const [type, setType] = useState<(typeof TABS)[number]["type"]>(
+    () => TABS.find((tab) => tab.type === searchParams.get("type"))?.type ?? "",
+  );
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<Event | null>(null);
 

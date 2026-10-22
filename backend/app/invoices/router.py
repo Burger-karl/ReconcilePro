@@ -11,12 +11,13 @@ from app.core.deps import CurrentUser, SessionDep
 from app.email import service as email_service
 from app.invoices import service
 from app.invoices.schemas import (
+    AgeingBucketName,
     EmailResult,
     InvoiceCreate,
     InvoiceDetail,
     InvoiceList,
     InvoiceRead,
-    InvoiceStatus,
+    InvoiceStatusFilter,
     InvoiceUpdate,
     SentInvoice,
     VoidRequest,
@@ -42,14 +43,15 @@ def http_errors() -> Iterator[None]:
 def list_invoices(
     user: CurrentUser,
     session: SessionDep,
-    status: InvoiceStatus | None = None,
+    status: InvoiceStatusFilter | None = None,
+    ageing: AgeingBucketName | None = None,
     customer_id: uuid.UUID | None = None,
     q: str | None = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> InvoiceList:
     items, total = service.list_invoices(
-        session, user, status=status, customer_id=customer_id, q=q, limit=limit, offset=offset
+        session, user, status=status, ageing=ageing, customer_id=customer_id, q=q, limit=limit, offset=offset
     )
     return InvoiceList(items=items, total=total)
 

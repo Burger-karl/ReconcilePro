@@ -5,8 +5,8 @@
  * money went. Layout C: ledger + inspector on wide screens, /transactions/[id] on phones.
  */
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import useSWR from "swr";
 
 import { Screen } from "@/components/app-shell/screen";
@@ -50,8 +50,21 @@ function LineBadge({ line }: { line: Line }) {
 }
 
 export default function StatementsPage() {
+  // useSearchParams() needs a Suspense boundary in the App Router (Next 16 docs: use-search-params).
+  return (
+    <Suspense>
+      <StatementsScreen />
+    </Suspense>
+  );
+}
+
+function StatementsScreen() {
   const router = useRouter();
-  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("all");
+  // The dashboard's "Collected this month" tile links here with ?tab=allocated (D-70).
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>(
+    () => TABS.find((entry) => entry.key === searchParams.get("tab"))?.key ?? "all",
+  );
   const [offset, setOffset] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 

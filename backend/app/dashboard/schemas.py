@@ -1,11 +1,9 @@
 """Response bodies for /api/v1/dashboard. All money is integer kobo (invariant 1)."""
 
 from datetime import date
-from typing import Literal
-
 from pydantic import BaseModel
 
-AgeingBucketName = Literal["current", "1_30", "31_60", "60_plus"]
+from app.invoices.schemas import AgeingBucketName
 
 
 class Summary(BaseModel):

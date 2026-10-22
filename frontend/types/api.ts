@@ -1790,7 +1790,8 @@ export interface operations {
     list_invoices_api_v1_invoices_get: {
         parameters: {
             query?: {
-                status?: ("draft" | "sent" | "part_paid" | "paid" | "overdue" | "void") | null;
+                status?: ("draft" | "sent" | "part_paid" | "paid" | "overdue" | "void" | "open") | null;
+                ageing?: ("current" | "1_30" | "31_60" | "60_plus") | null;
                 customer_id?: string | null;
                 q?: string | null;
                 limit?: number;

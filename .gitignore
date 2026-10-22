@@ -10,3 +10,6 @@ node_modules/
 frontend/.env.local
 build/
 *.egg-info/
+
+# Local Postgres (binaries + data) for development; never committed.
+.localdb/

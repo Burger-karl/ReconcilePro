@@ -91,16 +91,6 @@ def collections(session: Session, workspace_id: uuid.UUID, weeks: int) -> list[W
     ]
 
 
-def _bucket(days_late: int) -> AgeingBucketName:
-    if days_late <= 0:
-        return "current"  # not due yet, or due today
-    if days_late <= 30:
-        return "1_30"
-    if days_late <= 60:
-        return "31_60"
-    return "60_plus"
-
-
 def ageing(session: Session, workspace_id: uuid.UUID) -> list[AgeingBucket]:
     """What is still owed, grouped by how many days past its due date (Lagos today). All four buckets always."""
     today = lagos_today()
@@ -108,7 +98,7 @@ def ageing(session: Session, workspace_id: uuid.UUID) -> list[AgeingBucket]:
     outstanding = dict.fromkeys(names, 0)
     count = dict.fromkeys(names, 0)
     for invoice in invoices.open_invoices(session, workspace_id):
-        name = _bucket((today - invoice.due_date).days)
+        name = invoices.ageing_bucket(invoice.due_date, today)
         outstanding[name] += invoice.outstanding_kobo
         count[name] += 1
     return [AgeingBucket(bucket=name, outstanding_kobo=outstanding[name], count=count[name]) for name in names]

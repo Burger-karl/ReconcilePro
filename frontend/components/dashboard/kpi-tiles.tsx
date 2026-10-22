@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
  * The four numbers Overview leads with (pages/dashboard.md). Definitions live in the backend
  * (DECISIONS D-48); the frontend only formats them. Money is shown to the kobo, never rounded.
  * Each tile has a coloured icon, arrives a moment after the one before, and counts up to its figure (D-62).
+ * Each tile links to the list behind its number (D-70), unless there is nothing to show.
  */
 export function KpiTiles({ summary }: { summary: Schemas["Summary"] | undefined }) {
   if (!summary) {
@@ -43,6 +44,7 @@ export function KpiTiles({ summary }: { summary: Schemas["Summary"] | undefined 
         target={summary.outstanding_kobo}
         format={formatNaira}
         context={invoices === 0 ? "Nothing owed right now" : `across ${invoices} open invoice${invoices === 1 ? "" : "s"}`}
+        href={invoices === 0 ? undefined : "/invoices?status=open"}
       />
       <Tile
         index={1}
@@ -52,6 +54,7 @@ export function KpiTiles({ summary }: { summary: Schemas["Summary"] | undefined 
         target={summary.collected_this_month_kobo}
         format={formatNaira}
         context={`matched to invoices since ${monthStart}`}
+        href="/statements?tab=allocated"
       />
       <Tile
         index={2}
@@ -65,6 +68,8 @@ export function KpiTiles({ summary }: { summary: Schemas["Summary"] | undefined 
             ? "No payments matched in the last 30 days"
             : "of matches in the last 30 days needed nobody"
         }
+        // The Payments tab of the audit log says which matches were automatic and which were made by hand.
+        href={summary.auto_match_rate === null ? undefined : "/audit?type=allocation"}
       />
       <Tile
         index={3}

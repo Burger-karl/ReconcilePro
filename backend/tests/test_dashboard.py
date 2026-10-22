@@ -225,6 +225,77 @@ def test_ageing_always_lists_all_four_buckets(client: TestClient, auth_headers: 
     assert [row["bucket"] for row in get(client, auth_headers, AGEING)] == ["current", "1_30", "31_60", "60_plus"]
 
 
+# --- from a dashboard bucket to the invoices in it ---------------------------------------------------------
+
+
+def _ageing_numbers(client: TestClient, headers: dict, bucket: str) -> list[str]:
+    body = get(client, headers, f"/api/v1/invoices?ageing={bucket}")
+    assert body["total"] == len(body["items"])
+    return sorted(item["number"] for item in body["items"])
+
+
+def test_invoice_list_filters_by_ageing_bucket(client: TestClient, auth_headers: dict, session: Session) -> None:
+    # Clicking an ageing bucket on the dashboard opens the invoices list filtered to that bucket.
+    ws = workspace_id(client, auth_headers)
+    not_due = invoice(client, auth_headers, due=TODAY)
+    late_30 = invoice(client, auth_headers, due=TODAY - timedelta(days=30))
+    late_31 = invoice(client, auth_headers, due=TODAY - timedelta(days=31))
+    late_61 = invoice(client, auth_headers, due=TODAY - timedelta(days=61))
+    paid_late = invoice(client, auth_headers, due=TODAY - timedelta(days=90))
+    invoice(client, auth_headers, due=TODAY - timedelta(days=90), send=False)  # a draft is never owed
+    pay(session, ws, credit(session, ws, 10_750_000), paid_late["id"], 10_750_000)
+
+    assert _ageing_numbers(client, auth_headers, "current") == [not_due["number"]]
+    assert _ageing_numbers(client, auth_headers, "1_30") == [late_30["number"]]
+    assert _ageing_numbers(client, auth_headers, "31_60") == [late_31["number"]]
+    assert _ageing_numbers(client, auth_headers, "60_plus") == [late_61["number"]]
+
+
+def test_ageing_filter_agrees_with_the_dashboard(client: TestClient, auth_headers: dict, session: Session) -> None:
+    # The list behind a bucket must hold exactly the invoices the bucket counts, part-paid ones included.
+    ws = workspace_id(client, auth_headers)
+    for days in (0, 5, 10, 45, 75):
+        invoice(client, auth_headers, due=TODAY - timedelta(days=days))
+    part = invoice(client, auth_headers, due=TODAY - timedelta(days=10))
+    pay(session, ws, credit(session, ws, 1_000_000), part["id"], 1_000_000)
+
+    for bucket in get(client, auth_headers, AGEING):
+        listed = get(client, auth_headers, f"/api/v1/invoices?ageing={bucket['bucket']}")
+        assert listed["total"] == bucket["count"]
+        assert sum(item["outstanding_kobo"] for item in listed["items"]) == bucket["outstanding_kobo"]
+
+
+def test_open_status_lists_what_the_outstanding_tile_counts(
+    client: TestClient, auth_headers: dict, session: Session
+) -> None:
+    # Clicking "Outstanding" opens invoices?status=open: every invoice still owed, and nothing else.
+    ws = workspace_id(client, auth_headers)
+    sent = invoice(client, auth_headers)
+    overdue = invoice(client, auth_headers, due=TODAY - timedelta(days=5))
+    part = invoice(client, auth_headers)
+    paid = invoice(client, auth_headers)
+    invoice(client, auth_headers, send=False)  # draft
+    pay(session, ws, credit(session, ws, 1_000_000), part["id"], 1_000_000)
+    pay(session, ws, credit(session, ws, 10_750_000), paid["id"], 10_750_000)
+
+    listed = get(client, auth_headers, "/api/v1/invoices?status=open")
+    assert sorted(item["number"] for item in listed["items"]) == sorted([sent["number"], overdue["number"], part["number"]])
+    summary = get(client, auth_headers, SUMMARY)
+    assert listed["total"] == summary["open_invoice_count"]
+    assert sum(item["outstanding_kobo"] for item in listed["items"]) == summary["outstanding_kobo"]
+
+
+def test_unknown_ageing_bucket_is_422(client: TestClient, auth_headers: dict) -> None:
+    assert client.get("/api/v1/invoices?ageing=90_plus", headers=auth_headers).status_code == 422
+
+
+def test_ageing_filter_only_lists_the_callers_workspace(
+    client: TestClient, auth_headers: dict, other_auth_headers: dict
+) -> None:
+    invoice(client, other_auth_headers, due=TODAY - timedelta(days=40))
+    assert get(client, auth_headers, "/api/v1/invoices?ageing=31_60")["total"] == 0
+
+
 # --- scope and access ---------------------------------------------------------------------------------
 
 
