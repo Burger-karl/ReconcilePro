@@ -56,7 +56,7 @@ export function AudienceTabs() {
       {AUDIENCES.map((audience) => (
         // animate-rise on the panel: switching tabs fades the new content up.
         <TabsContent key={audience.value} value={audience.value} className="animate-rise mt-8">
-          <div className="lift-card mx-auto max-w-3xl rounded-2xl border bg-card p-6 sm:p-8">
+          <div className="lift-card tone tone-sky mx-auto max-w-3xl rounded-2xl border bg-card p-6 sm:p-8">
             <h3 className="text-xl font-semibold">{audience.title}</h3>
             <ul className="mt-5 grid gap-3">
               {audience.points.map((point) => (

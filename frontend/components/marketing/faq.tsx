@@ -39,7 +39,7 @@ const QUESTIONS = [
 
 export function Faq() {
   return (
-    <Accordion type="single" collapsible className="w-full rounded-2xl border bg-card px-5">
+    <Accordion type="single" collapsible className="tone tone-violet w-full rounded-2xl border bg-card px-5">
       {QUESTIONS.map((item, index) => (
         <AccordionItem key={item.q} value={`q${index}`}>
           <AccordionTrigger className="text-left text-base">{item.q}</AccordionTrigger>

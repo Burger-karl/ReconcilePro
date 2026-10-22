@@ -79,7 +79,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="grid flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <BrandPanel />
-      <div className="relative isolate flex flex-col bg-canvas">
+      <div className="relative isolate flex flex-col bg-wash">
         {/* A soft teal glow at the top of the form side (the only colour on phones, where the panel is hidden). */}
         <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-linear-to-b from-brand-soft to-transparent" aria-hidden />
         <header className="flex items-center justify-between px-4 py-3 sm:px-6">

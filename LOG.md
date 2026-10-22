@@ -326,3 +326,11 @@ Template (copy per day):
 - **Broke:** Postgres wouldn't start: Windows' temp cleanup had deleted part of the `pgserver` helper package. The Postgres binaries were still there, so I started it with `pg_ctl` directly on a fixed port (54687). My first offline page showed the logo, but the service worker only catches page loads, so the image would have needed the network it didn't have. I removed it.
 - **Learned:** A service worker cache outlives sign-out, so caching API answers would leave one workspace's data on a shared device. Caching nothing but the offline page is the safe default for money data. `NEXT_PUBLIC_*` values are baked in at build time, so a new Google client ID needs a rebuild, not just a restart.
 - **Next:** Test the offline page (DevTools → Network → Offline). Create the Google client ID following the guide. Push `main`.
+
+### Day 12 — 2026-10-22: softer colours and tinted cards
+- **Built:** On `feat/softer-palette` (D-69). Light mode is no longer all white: a mint-tinted page, deeper mint panels and section bands, and white cards on top. Dark mode is a deep teal-navy instead of near-black. A `bg-wash` utility lays three faint colour glows behind the page (teal, sky, amber in light; teal and indigo in dark). The landing page's text cards got soft diagonal tints (`.tone` + teal, sky, amber or violet), with neighbouring cards in different colours.
+- **Decided:** I compared a calmer "ledger" redesign (published as a demo) and kept the current UI, then previewed the card tints in a second demo before adding them.
+- **Checked:** Typecheck, lint and the webpack build pass; the served CSS has the new tokens and tone classes. My own look in the browser, light and dark.
+- **Broke:** In Tailwind 4, `@apply` only works with utilities declared with `@utility`, not with a plain class in `@layer utilities`, so `bg-wash` had to become an `@utility`. Low memory kept stopping the dev servers.
+- **Learned:** Cards stand out better by a change of colour than by heavy shadows. A tint fading to near-white keeps grey text readable (still about 6.5:1).
+- **Next:** Go through `docs/TEST.md` in the browser. Push `main`.
