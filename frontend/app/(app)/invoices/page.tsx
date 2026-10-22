@@ -5,12 +5,13 @@
  * layout C inspector on the right (wide screens) or on its own page (phones: /invoices/[id]).
  */
 
-import { Plus, Search } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Plus, Search, X } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 
 import { Screen } from "@/components/app-shell/screen";
+import { BUCKETS } from "@/components/dashboard/ageing-list";
 import { InvoiceFormDialog } from "@/components/invoices/invoice-form-dialog";
 import { InvoicePanel } from "@/components/invoices/invoice-panel";
 import { type InvoiceStatus, StatusBadge } from "@/components/status-badge";
@@ -24,9 +25,13 @@ import { refreshAfterChange } from "@/lib/refresh";
 import { cn } from "@/lib/utils";
 
 type Invoice = Schemas["InvoiceRead"];
+// "open" = still owed (sent, part paid or overdue): what the dashboard's Outstanding tile counts (D-70).
+type Tab = InvoiceStatus | "all" | "open";
+type Ageing = keyof typeof BUCKETS;
 
-const TABS: { value: InvoiceStatus | "all"; label: string }[] = [
+const TABS: { value: Tab; label: string }[] = [
   { value: "all", label: "All" },
+  { value: "open", label: "Open" },
   { value: "draft", label: "Drafts" },
   { value: "sent", label: "Sent" },
   { value: "part_paid", label: "Part paid" },
@@ -39,9 +44,27 @@ const shortDate = new Intl.DateTimeFormat("en-NG", { day: "numeric", month: "sho
 const asDate = (isoDate: string) => shortDate.format(new Date(`${isoDate}T00:00:00`));
 
 export default function InvoicesPage() {
+  // useSearchParams() needs a Suspense boundary in the App Router (Next 16 docs: use-search-params).
+  return (
+    <Suspense>
+      <InvoicesScreen />
+    </Suspense>
+  );
+}
+
+function InvoicesScreen() {
   const router = useRouter();
   const { mutate } = useSWRConfig();
-  const [status, setStatus] = useState<InvoiceStatus | "all">("all");
+  // The dashboard links here with ?status=open or ?ageing=31_60 (D-70); anything else in the URL is ignored.
+  const searchParams = useSearchParams();
+  const [status, setStatus] = useState<Tab>(() => {
+    const fromUrl = searchParams.get("status");
+    return TABS.find((tab) => tab.value === fromUrl)?.value ?? "all";
+  });
+  const [ageing, setAgeing] = useState<Ageing | null>(() => {
+    const fromUrl = searchParams.get("ageing");
+    return fromUrl && fromUrl in BUCKETS ? (fromUrl as Ageing) : null;
+  });
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState(""); // the search actually sent, a moment after typing stops
   const [offset, setOffset] = useState(0);
@@ -59,6 +82,7 @@ export default function InvoicesPage() {
 
   const params = new URLSearchParams({ limit: String(PAGE), offset: String(offset) });
   if (status !== "all") params.set("status", status);
+  if (ageing) params.set("ageing", ageing);
   if (query) params.set("q", query);
   const { data, error, isLoading } = useSWR<Schemas["InvoiceList"]>(`${API}/invoices?${params}`);
 
@@ -98,6 +122,7 @@ export default function InvoicesPage() {
                 variant={status === tab.value ? "default" : "ghost"}
                 onClick={() => {
                   setStatus(tab.value);
+                  setAgeing(null); // a status tab replaces the ageing filter, so the two never silently combine
                   setOffset(0);
                 }}
               >
@@ -117,13 +142,23 @@ export default function InvoicesPage() {
           </div>
         </div>
 
+        {ageing && (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Showing invoices</span>
+            <Button size="sm" variant="secondary" onClick={() => setAgeing(null)} aria-label={`Remove filter: ${BUCKETS[ageing].label}`}>
+              {BUCKETS[ageing].label}
+              <X aria-hidden />
+            </Button>
+          </div>
+        )}
+
         {error ? (
           <p className="text-sm text-muted-foreground">{error instanceof Error ? error.message : "Couldn't load invoices."}</p>
         ) : isLoading || !data ? (
           <Skeleton className="h-80 w-full" />
         ) : data.items.length === 0 ? (
           <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-            {query || status !== "all" ? "No invoices match this filter." : "No invoices yet. Create your first one."}
+            {query || ageing || status !== "all" ? "No invoices match this filter." : "No invoices yet. Create your first one."}
           </div>
         ) : (
           // The table scrolls sideways inside its own box on narrow screens, never the whole page (MASTER.md §9).

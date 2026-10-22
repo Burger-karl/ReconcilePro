@@ -11,6 +11,12 @@ from typing import Literal
 from pydantic import BaseModel, Field, StrictInt, field_validator, model_validator
 
 InvoiceStatus = Literal["draft", "sent", "part_paid", "paid", "overdue", "void"]
+# The list's ?status= filter: any status above, or "open" = still owed (sent, part_paid or overdue), which is
+# exactly what the dashboard's Outstanding tile counts (D-70).
+InvoiceStatusFilter = Literal["draft", "sent", "part_paid", "paid", "overdue", "void", "open"]
+# How late an open invoice is: not due yet (or due today), 1-30, 31-60 or more than 60 days past its due date.
+# Used by the dashboard's ageing chart and by the invoice list's ?ageing= filter (D-70).
+AgeingBucketName = Literal["current", "1_30", "31_60", "60_plus"]
 
 # ₦10 billion per invoice is far above any SME invoice and catches typos with extra zeros.
 MAX_SUBTOTAL_KOBO = 1_000_000_000_000

@@ -648,3 +648,18 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
   to near-white in light mode, a faint glow of the hue over the card colour in dark mode, with a matching border.
   Neighbouring cards use different hues so the page doesn't read as one flat colour. Decoration on the landing
   page only; the app screens and status badges are unchanged.
+
+## D-70 — Dashboard tiles and ageing buckets open the list behind the number
+- **Decision:** every Overview figure links to the records it counts. Outstanding → `/invoices?status=open`;
+  Collected this month → `/statements?tab=allocated`; Auto-match rate → `/audit?type=allocation` (the Payments
+  tab says which matches were automatic); Needs review → `/match` (as before). Each ageing bucket with invoices in
+  it → `/invoices?ageing=current|1_30|31_60|60_plus`. A tile or bucket with nothing behind it is not a link.
+- **API:** `GET /invoices` gains `?ageing=` and `?status=open` (sent, part paid or overdue). Both filter after
+  the status is derived, like the other status filters (D-15). The bucket rule moved to
+  `invoices.service.ageing_bucket()`, and the dashboard uses the same function, so a bucket's list always holds
+  exactly the invoices the bucket counts (tested: same count, same outstanding total).
+- **Frontend:** Invoices, Statements and Audit read their starting tab from the URL (`useSearchParams`, inside a
+  `Suspense` boundary as Next 16 requires). On Invoices an ageing filter shows as a removable chip; picking a
+  status tab clears it, so the two filters never combine silently.
+- **Rejected:** a date range on "Collected this month". The Matched tab lists every matched line, not only this
+  month's; good enough for a click-through, and the tile itself stays exact.

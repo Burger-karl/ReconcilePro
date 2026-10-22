@@ -7,14 +7,49 @@ Takes about 45 minutes. Do the sections in order: later ones use data from earli
 
 ---
 
+## What ReconcilePro is for
+
+**The problem.** A Nigerian small business sends invoices, and its customers pay by bank transfer or by card
+through Paystack. Someone then has to work out which invoice each payment was for. Today that's done by hand in
+Excel, line by line through the bank statement. Narrations are often vague ("TRF FRM ADA"), so payments get matched
+to the wrong invoice or counted twice. The same statement gets imported twice. Paystack's lump settlement gets
+mistaken for new income. And nobody can later say who marked an invoice as paid.
+
+**What it does.** You upload the bank statement as a CSV. ReconcilePro matches every payment it is sure about
+(the customer quoted the invoice's reference), and suggests the likely invoice for the rest, with its reasons. You
+only review what it isn't sure of. Card payments through Paystack are recorded and matched by themselves. The
+money can never be double counted: re-imports add nothing, duplicate Paystack notifications pay once, and nothing
+can be over-allocated. Every manual action is kept in an audit log.
+
+## The sidebar
+
+| Item | What it's for |
+| --- | --- |
+| **Overview** | The dashboard: what you're owed, what came in this month, how much matched itself, what needs you, and how late unpaid invoices are. Every figure opens the list behind it. |
+| **Match payments** | The review queue: payments ReconcilePro wasn't sure about, each with its likely invoices and the reasons. Accept, pick another, split a payment, or reject. The badge shows how many are waiting. |
+| **Invoices** | Create, edit (while draft), send, email and void invoices. VAT (7.5%) is added for you. Status (paid, part paid, overdue) is worked out from the payments matched to each one. |
+| **Customers** | Who you bill, their email, and the other names they pay under on bank statements ("aliases"), which help the matching. Shows what each still owes. |
+| **Statements** | Import a bank statement CSV, then see every money-in line and where its money went: matched, part matched, waiting, or a Paystack payout. |
+| **Audit log** | Every change, who made it and when, in plain sentences. Read-only: nothing in it can be edited or deleted. |
+| **Settings** | Your business's bank details, printed on every invoice so customers can pay by transfer. |
+
+At the bottom of the sidebar, your account menu has the light/dark theme switch and **Sign out**.
+
+---
+
 ## 0. Before you start
 
 1. **Start the three servers** (each in its own terminal, so low memory can't stop them):
-   - Postgres on port 54687 (see the commands from the session, or ask Claude to start it).
-   - API:
+   - Postgres (lives in the project's `.localdb/` folder, never committed). It keeps running after the
+     terminal closes; stop it with the same command and `stop` instead of `start`:
+     ```powershell
+     cd C:\Users\charl\Desktop\Projects\ReconcilePro
+     .localdb\pgsql\bin\pg_ctl.exe -D .localdb\data -l .localdb\postgres.log -o "-p 54687 -h 127.0.0.1" start
+     ```
+   - API (uses the `reconcile_dev` database):
      ```powershell
      cd C:\Users\charl\Desktop\Projects\ReconcilePro\backend
-     $env:ENVIRONMENT="development"; $env:DATABASE_URL="postgresql+psycopg://postgres@127.0.0.1:54687/reconcile_test"
+     $env:ENVIRONMENT="development"; $env:DATABASE_URL="postgresql+psycopg://postgres@127.0.0.1:54687/reconcile_dev"
      .venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
      ```
    - Web:
@@ -28,10 +63,14 @@ Takes about 45 minutes. Do the sections in order: later ones use data from earli
 **Demo data.** The demo workspace "Adaeze Foods" has 6 customers, 8 invoices and one imported statement.
 Sign in with `demo@adaezefoods.ng` / `demo-password-1`.
 
-> **Running the backend tests wipes this data** (they share the database). To get it back:
+> The backend tests use a separate database (`reconcile_test`), so running them no longer touches this data.
+> To start again from fresh demo data, empty `reconcile_dev` and re-seed:
 > ```powershell
-> cd C:\Users\charl\Desktop\Projects\ReconcilePro\backend
-> $env:ENVIRONMENT="development"; $env:DATABASE_URL="postgresql+psycopg://postgres@127.0.0.1:54687/reconcile_test"
+> cd C:\Users\charl\Desktop\Projects\ReconcilePro
+> .localdb\pgsql\bin\psql.exe -h 127.0.0.1 -p 54687 -U postgres -c "drop database reconcile_dev" -c "create database reconcile_dev"
+> cd backend
+> $env:ENVIRONMENT="development"; $env:DATABASE_URL="postgresql+psycopg://postgres@127.0.0.1:54687/reconcile_dev"
+> .venv\Scripts\python.exe -m alembic upgrade head
 > .venv\Scripts\python.exe seed.py
 > ```
 
@@ -96,6 +135,13 @@ Sign in as the **demo** user.
 - [ ] **5.2** The **collections** chart shows weekly bars; hover one to see its amount.
 - [ ] **5.3** The **ageing** list shows Current, 1–30, 31–60 and 60+ days, each with an amount and count.
 - [ ] **5.4** Note the **Needs review** number; you'll see it change in section 9.
+- [ ] **5.5** Click **Outstanding**. Invoices opens on the **Open** tab, and the number of invoices matches the
+      tile's "across N open invoices". Go back.
+- [ ] **5.6** Click **Collected this month**: Statements opens on the **Matched** tab. Click **Auto-match rate**:
+      the Audit log opens on **Payments**. Click **Needs review**: the Match screen opens.
+- [ ] **5.7** Click an ageing row, e.g. **Over 60 days late**. Invoices shows a **Over 60 days late ✕** chip and
+      only those invoices; their count matches the row's count. Click the chip's ✕: all invoices come back.
+- [ ] **5.8** An ageing row with **0 invoices** is not clickable.
 
 ## 6. Customers
 
@@ -145,6 +191,35 @@ DATE POSTED,VALUE DATE,DESCRIPTION,DEBIT,CREDIT
       matched to any invoice.
 - [ ] **8.6** Try importing a file that isn't a CSV (e.g. a `.txt` with random text). You get a clear error and nothing
       is imported.
+
+### 8b. Ready-made statements for the demo data
+
+Two files in `docs/test-data/`, written for the **current** demo invoices: their payment references
+(`RCN-GE63FD`, `RCN-D86PCR`, `RCN-XHGSUW`) only exist until you re-seed. After a re-seed, open Invoices and swap
+in the new references.
+
+**`statement-1-bank-a.csv`** (bank A layout: account details above the header, `DD-Mon-YYYY` dates, a balance
+column). Import it from **Statements**:
+
+- [ ] **8b.1** Summary: **6 added**, **2 debits ignored** (Shoprite, SMS charges), **1 settlement**,
+      **2 matched automatically**, **3 need review**.
+- [ ] **8b.2** **Chika Logistics INV-0004** (₦129,000.00, quoted its reference) is now **paid**.
+- [ ] **8b.3** **Bisi Stores INV-0002** got ₦50,000.00 by reference and is still **part paid / overdue**.
+- [ ] **8b.4** On **Match**: `TUNDE PRINTING` (no reference, amount equals what Tunde Print owes) is suggested for
+      **INV-0003** with its reasons. `KOLA AND SONS … RCN-XHGSUW` for ₦40,000.00 is **not** auto-matched: it is more
+      than INV-0007's ₦32,250.00. `IFEANYI OKORO` matches nobody.
+
+**`statement-2-bank-b.csv`** (bank B layout: plain header, `YYYY/MM/DD` dates, no balance). Import it next:
+
+- [ ] **8b.5** Summary: **5 added**, **1 debit ignored**, **1 settlement**, **2 matched automatically**, **2 need
+      review**.
+- [ ] **8b.6** **INV-0007** (Kola & Sons) is **paid**: the reference was typed as `rcn xhgsuw` (lower case, with a
+      space) and still matched.
+- [ ] **8b.7** **INV-0002** (Bisi Stores) is now **paid**: ₦50,000.00 from file 1 plus ₦118,750.00 here.
+- [ ] **8b.8** The two identical `IFEOMA CATERING` ₦25,000.00 lines were **both** added (two real payments on one
+      day), and both wait on Match.
+- [ ] **8b.9** Import **either file again**: **0 added**, every line skipped as a duplicate.
+- [ ] **8b.10** Overview: Outstanding has dropped, Collected this month has risen, and the ageing rows changed.
 
 ## 9. Match screen (the exception queue)
 

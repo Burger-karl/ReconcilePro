@@ -21,6 +21,7 @@ from app.core.time import lagos_today, utc_now
 from app.customers.models import Customer
 from app.invoices.models import Invoice
 from app.invoices.schemas import (
+    AgeingBucketName,
     InvoiceCreate,
     InvoiceDetail,
     InvoicePayment,
@@ -131,6 +132,18 @@ def _read_many(session: Session, workspace_id: uuid.UUID, rows: list[tuple[Invoi
 OPEN_STATUSES = ("sent", "part_paid", "overdue")
 
 
+def ageing_bucket(due_date: date, today: date) -> AgeingBucketName:
+    """How late an invoice is, by whole days past its due date. One definition for the dashboard and the list."""
+    days_late = (today - due_date).days
+    if days_late <= 0:
+        return "current"  # not due yet, or due today
+    if days_late <= 30:
+        return "1_30"
+    if days_late <= 60:
+        return "31_60"
+    return "60_plus"
+
+
 def open_invoices(session: Session, workspace_id: uuid.UUID) -> list[InvoiceRead]:
     """Every invoice with money still owed, with its derived status (invariant 5).
 
@@ -205,6 +218,7 @@ def list_invoices(
     user: User,
     *,
     status: str | None = None,
+    ageing: AgeingBucketName | None = None,
     customer_id: uuid.UUID | None = None,
     q: str | None = None,
     limit: int = 50,
@@ -230,8 +244,18 @@ def list_invoices(
     invoices = _read_many(session, user.workspace_id, list(session.exec(query).all()))
     # Status is derived, so it can't be a SQL WHERE (paid/overdue aren't columns). We filter after
     # deriving; fine for an SME's few thousand invoices, and keeps one definition of status.
-    if status is not None:
+    if status == "open":
+        invoices = [invoice for invoice in invoices if invoice.status in OPEN_STATUSES]
+    elif status is not None:
         invoices = [invoice for invoice in invoices if invoice.status == status]
+    if ageing is not None:
+        # Same rule as the dashboard's ageing (D-70): only invoices still owed, bucketed by days past due.
+        today = lagos_today()
+        invoices = [
+            invoice
+            for invoice in invoices
+            if invoice.status in OPEN_STATUSES and ageing_bucket(invoice.due_date, today) == ageing
+        ]
     return invoices[offset : offset + limit], len(invoices)
 
 

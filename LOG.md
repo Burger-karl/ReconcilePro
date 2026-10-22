@@ -334,3 +334,10 @@ Template (copy per day):
 - **Broke:** In Tailwind 4, `@apply` only works with utilities declared with `@utility`, not with a plain class in `@layer utilities`, so `bg-wash` had to become an `@utility`. Low memory kept stopping the dev servers.
 - **Learned:** Cards stand out better by a change of colour than by heavy shadows. A tint fading to near-white keeps grey text readable (still about 6.5:1).
 - **Next:** Go through `docs/TEST.md` in the browser. Push `main`.
+
+### Day 12 (continued): clickable dashboard, and a database that stays put
+- **Built:** On `feat/dashboard-links` (D-70), test-first: 5 new tests failed, then passed; 424 backend tests pass. Every Overview tile now opens the list behind its number (Outstanding → open invoices, Collected → matched bank lines, Auto-match rate → the Payments audit log, Needs review → Match), and each ageing bucket opens the invoices in it. `GET /invoices` gained `?ageing=` and `?status=open`; the bucket rule moved into `invoices.service.ageing_bucket()`, so the dashboard and the list share one definition. Invoices, Statements and Audit read their starting tab from the URL.
+- **Broke:** Windows' temp cleanup deleted most of my local Postgres data folder (it lived in a Temp scratch folder): "could not open file base/16384/6102". Not repairable, but the demo data is all re-creatable with `seed.py`.
+- **Fixed:** A new Postgres in `.localdb/` inside the project (binaries and data, git-ignored), with **two databases**: `reconcile_dev` for the app and `reconcile_test` for pytest. So the test suite no longer wipes my demo data.
+- **Learned:** Two filters showing "the same" invoices must share one function, and a test should prove the list and the tile agree. Running two pytest runs at once against one database makes them break each other.
+- **Next:** Click through the new links in the browser (`docs/TEST.md` 5.5–5.8). Commit and merge.
