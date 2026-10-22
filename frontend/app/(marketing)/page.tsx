@@ -99,27 +99,32 @@ const FEATURES = [
     title: "Bank imports that never double count",
     text: "Upload overlapping statements without fear: each line has a fingerprint and is only ever added once.", // invariant 2
     wide: true,
+    tone: "tone-sky",
   },
   {
     icon: CreditCard,
     title: "Paystack, recorded once",
     text: "A card payment is recorded when Paystack confirms it, and a repeated notification changes nothing.", // invariant 3
+    tone: "tone-violet",
   },
   {
     icon: Mail,
     title: "Invoices that get paid",
     text: "Send an invoice and your customer gets an email with a link to pay by card or transfer.", // D-60
+    tone: "tone-amber",
   },
   {
     icon: ShieldCheck,
     title: "Never over-allocated",
     text: "No invoice or bank line can be allocated more than its amount, even with two people working at once.", // invariant 4
+    tone: "tone-teal",
   },
   {
     icon: History,
     title: "Nothing disappears",
     text: "A wrong match is reversed with a reason, never deleted, and the audit log keeps who, what and when.", // invariant 7
     wide: true,
+    tone: "tone-sky",
   },
 ];
 
@@ -130,6 +135,8 @@ const ICON_TILE =
   "lift-icon flex size-11 items-center justify-center rounded-xl bg-brand-soft text-brand ring-1 ring-teal-200 dark:ring-teal-800";
 // Cards that lift and tilt towards you on hover (.lift-card in globals.css: transform only).
 const CARD = "lift-card rounded-2xl border bg-card";
+// Card tints (.tone in globals.css, D-69), one per "How it works" step.
+const STEP_TONES = ["tone-teal", "tone-sky", "tone-violet"];
 
 function SectionHeading({ eyebrow, title, text, id }: { eyebrow: string; title: string; text?: string; id: string }) {
   return (
@@ -147,7 +154,7 @@ function SectionHeading({ eyebrow, title, text, id }: { eyebrow: string; title: 
 
 export default function LandingPage() {
   return (
-    <div className="flex flex-1 flex-col bg-background">
+    <div className="flex flex-1 flex-col bg-wash">
       {/* Sticky glass header: stays on top while scrolling, the page shows through blurred. */}
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
@@ -259,7 +266,7 @@ export default function LandingPage() {
         <section aria-labelledby="compare-heading" className="border-t bg-canvas px-4 py-20 sm:px-6 lg:py-28">
           <SectionHeading id="compare-heading" eyebrow="Why switch" title="From spreadsheet to sorted" />
           <div className="mx-auto mt-14 grid max-w-5xl gap-6 md:grid-cols-2">
-            <div className={cn(CARD, "reveal p-7")}>
+            <div className={cn(CARD, "tone tone-amber reveal p-7")}>
               <p className="flex items-center gap-2 font-semibold text-muted-foreground">
                 <FileSpreadsheet className="size-5" aria-hidden />
                 The spreadsheet way
@@ -275,7 +282,7 @@ export default function LandingPage() {
                 ))}
               </ul>
             </div>
-            <div className={cn(CARD, "reveal relative overflow-hidden border-teal-300 p-7 dark:border-teal-800")}>
+            <div className={cn(CARD, "tone tone-teal reveal relative overflow-hidden border-teal-300 p-7 dark:border-teal-800")}>
               <div className="glow pointer-events-none absolute -top-24 -right-24 size-64 [--glow:rgb(45_212_191/0.25)]" aria-hidden />
               <p className="flex items-center gap-2 font-semibold">
                 <LogoMark size={22} />
@@ -318,7 +325,7 @@ export default function LandingPage() {
               aria-hidden
             />
             {STEPS.map((step, index) => (
-              <li key={step.title} className={cn(CARD, "reveal relative flex flex-col gap-4 p-6")}>
+              <li key={step.title} className={cn(CARD, "tone reveal relative flex flex-col gap-4 p-6", STEP_TONES[index])}>
                 <div className="flex items-center justify-between">
                   <span className={ICON_TILE}>
                     <step.icon className="size-5" aria-hidden />
@@ -350,7 +357,7 @@ export default function LandingPage() {
           />
           <div className="mx-auto mt-14 grid max-w-6xl gap-6 lg:grid-cols-3">
             {/* The kobo card shows the maths it promises. Invariant 1: integer kobo end to end. */}
-            <div className={cn(CARD, "reveal flex flex-col gap-4 p-6 lg:row-span-2")}>
+            <div className={cn(CARD, "tone tone-teal reveal flex flex-col gap-4 p-6 lg:row-span-2")}>
               <span className={ICON_TILE}>
                 <Sigma className="size-5" aria-hidden />
               </span>
@@ -376,7 +383,7 @@ export default function LandingPage() {
               </div>
             </div>
             {FEATURES.map((feature) => (
-              <div key={feature.title} className={cn(CARD, "reveal flex flex-col gap-3 p-6", feature.wide && "lg:col-span-2")}>
+              <div key={feature.title} className={cn(CARD, "tone reveal flex flex-col gap-3 p-6", feature.tone, feature.wide && "lg:col-span-2")}>
                 <span className={ICON_TILE}>
                   <feature.icon className="size-5" aria-hidden />
                 </span>

@@ -631,3 +631,20 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
   Vercel deploy; Chrome treats `localhost` as secure, so local testing works.
 - **Rejected:** Serwist/next-pwa (a dependency and a build step for one cached file). Push notifications
   (VAPID keys, a subscriptions table, a sender in the API) are a new feature, left for later.
+
+## D-69 — Tinted backgrounds and soft colour glows instead of plain white
+- **Context:** in light mode almost everything was white (page, panels, cards), which felt flat and harsh; dark
+  mode was near-black slate. I compared a calmer "ledger" redesign and chose to keep the current UI.
+- **Decision:** three layers of one mint/teal hue in `app/globals.css`: the page (`--background`, a mint-tinted
+  off-white), panels and section bands (`--canvas`, deeper mint) and white cards (`--card`) on top. Muted fills,
+  borders and the teal wash moved to the same hue. A `bg-wash` utility lays three faint radial glows (teal, sky
+  blue, warm amber; teal and indigo in dark mode) over the page colour; it is on `body`, the app's main area, the
+  landing page and the auth form side. Dark mode is a deep teal-navy (`#071318`) instead of slate-950.
+- **Why:** cards now stand out by colour instead of heavy shadows, and the page has some warmth. The glows are a
+  static background, so they cost nothing at runtime and don't add motion. Status colours are unchanged.
+- **Checked:** `--muted-foreground` (slate-600) is still about 6.5:1 on the darkest light surface (`--canvas`).
+- **Landing cards:** the text cards (before/after, the three steps, the feature bento, the audience tabs and the
+  FAQ) get a soft diagonal tint (`.tone` + `tone-teal|sky|amber|violet` in `globals.css`): a light tint fading
+  to near-white in light mode, a faint glow of the hue over the card colour in dark mode, with a matching border.
+  Neighbouring cards use different hues so the page doesn't read as one flat colour. Decoration on the landing
+  page only; the app screens and status badges are unchanged.

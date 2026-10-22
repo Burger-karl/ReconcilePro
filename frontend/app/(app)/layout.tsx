@@ -65,7 +65,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           panes can scroll independently, and the rail never scrolls away). */}
       <SidebarProvider open={false} className="h-svh">
         <Rail />
-        <SidebarInset className="min-h-0 min-w-0 overflow-hidden bg-background">
+        <SidebarInset className="min-h-0 min-w-0 overflow-hidden bg-wash">
           {/* Phones: the rail becomes a slide-out menu opened from this bar. */}
           <div className="flex items-center gap-2 border-b px-3 py-2 md:hidden">
             <SidebarTrigger aria-label="Open navigation" />
