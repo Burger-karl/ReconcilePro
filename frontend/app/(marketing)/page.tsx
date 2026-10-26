@@ -1,13 +1,13 @@
 /**
  * Landing page in the CEK Alpha style (DECISIONS D-71, replacing D-62/D-63/D-65's look).
  *
- * Sections, in CEK's order: a white sticky header; the hero (rotating photos behind a dark gradient, the
- * promise on the left and an example "today's import" card on the right); About Us (photo with two badges,
+ * Sections, in CEK's order: a white sticky header; the hero (a bank alert on a phone and the invoice it paid
+ * being stamped PAID, D-73); About Us (photo with two badges,
  * three features); How it works (on the beige band, three numbered cards); E-invoicing, coming soon (D-72);
  * a dark call to action; FAQ; and a dark footer.
  *
  * A server component: rendered once and sent as plain HTML (fast, indexable). The only browser code is in
- * small pieces: AuthNav and StartButtons (signed in or not), the hero photos, and the shadcn Accordion.
+ * small pieces: AuthNav and StartButtons (signed in or not), and the shadcn Accordion.
  * Every claim is something the product really does; comments name the rule behind it for the viva.
  */
 
@@ -31,30 +31,16 @@ import Link from "next/link";
 
 import { Logo } from "@/components/brand/logo";
 import { AuthNav } from "@/components/marketing/auth-nav";
+import { BankAlertHero } from "@/components/marketing/bank-alert-hero";
 import { EInvoicingSection } from "@/components/marketing/e-invoicing-section";
 import { Faq } from "@/components/marketing/faq";
-import { HeroCarousel } from "@/components/marketing/hero-carousel";
 import { StartButtons } from "@/components/marketing/start-buttons";
-import { formatNaira } from "@/lib/money";
 
 export const metadata: Metadata = {
   title: "ReconcilePro — know which invoices are paid",
   description:
     "ReconcilePro reads your bank statements and Paystack payments, matches each one to the right invoice, and only asks you about the ones it isn't sure of.",
 };
-
-// The example card in the hero. Decoration that shows the three things an import does (amounts in kobo).
-const IMPORT_LINES = [
-  { narration: "NIP/ADAEZE FOODS/RCN-7Q4K", kobo: 10_750_000, tag: "Matched", tone: "ok", note: "INV-0042 · reference in narration" }, // exact reference
-  { narration: "MOB TRF/KOLA/FOODSTUFF", kobo: 4_000_000, tag: "Suggested", tone: "suggested", note: "INV-0040 · amount and name match" }, // score ≥ 70
-  { narration: "PAYSTACK SETTLEMENT 0193884", kobo: 41_286_000, tag: "Paystack payout", tone: "settlement", note: "already counted, set aside" }, // invariant 6
-] as const;
-
-const TAG_STYLES = {
-  ok: "bg-green-100 text-green-800",
-  suggested: "bg-orange-100 text-orange-800",
-  settlement: "bg-stone-200 text-stone-700",
-} as const;
 
 const FEATURES = [
   {
@@ -154,90 +140,8 @@ export default function LandingPage() {
       </header>
 
       <main className="flex-1">
-        {/* ── Hero ─────────────────────────────────────────────────────────────────────────────── */}
-        <section aria-label="Introduction" className="relative isolate overflow-hidden bg-neutral-950 text-white">
-          <HeroCarousel />
-          {/* Dark on the left (behind the text), lighter on the right, plus a soft orange glow top right. */}
-          <div className="absolute inset-0 -z-10 bg-linear-to-r from-neutral-950/95 via-neutral-950/80 to-neutral-950/45" aria-hidden />
-          <div className="absolute -top-40 -right-32 -z-10 size-[32rem] rounded-full bg-[radial-gradient(circle,rgb(234_124_0/0.35),transparent_65%)]" aria-hidden />
-
-          <div className="mx-auto grid max-w-6xl items-center gap-14 px-4 pt-20 pb-28 sm:px-6 lg:grid-cols-[1.15fr_1fr] lg:pt-24">
-            <div>
-              <span className="inline-flex items-center gap-2.5 rounded-full border border-primary/40 bg-primary/15 px-4 py-1.5 font-nav text-sm text-orange-200">
-                <span className="size-2 rounded-full bg-primary ring-4 ring-primary/25" aria-hidden />
-                For Nigerian businesses that send invoices
-              </span>
-              <h1 className="mt-6 text-4xl leading-[1.08] font-black tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                Every payment, matched. <span className="text-primary">Every kobo accounted for.</span>
-              </h1>
-              <span className="my-6 block h-1 w-20 rounded-full bg-primary" aria-hidden />
-              <p className="max-w-xl text-lg font-light text-white/80">
-                ReconcilePro reads your bank statements and Paystack payments, matches each one to the invoice it paid,
-                and only asks you about the ones it isn&apos;t sure of.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <StartButtons primaryClassName="hover:bg-white hover:text-neutral-950" />
-                <a
-                  href="#how"
-                  className="inline-flex h-11 items-center rounded-full border-2 border-white/60 px-6 font-nav text-base font-medium transition-colors hover:bg-white hover:text-neutral-950"
-                >
-                  See how it works
-                </a>
-              </div>
-              <ul className="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/85">
-                {["Bank CSV and Paystack", "Never counted twice", "Full audit trail"].map((fact) => (
-                  <li key={fact} className="flex items-center gap-2">
-                    <CheckCircle2 className="size-4.5 text-primary" aria-hidden />
-                    {fact}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* The example import card: always light, like a sheet of paper on the photo. Decoration. */}
-            <div className="relative rounded-3xl bg-white/95 p-6 text-stone-700 shadow-[0_30px_60px_rgb(0_0_0/0.45)]" aria-hidden>
-              <div className="flex items-center justify-between gap-3 border-b border-stone-200 pb-4">
-                <div>
-                  <p className="font-heading text-lg font-black text-stone-900">Today&apos;s import</p>
-                  <p className="text-xs text-stone-500">GTBank statement · 38 lines</p>
-                </div>
-                <span className="flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 font-nav text-xs text-green-800">
-                  <span className="size-1.5 rounded-full bg-green-600" />
-                  Matching
-                </span>
-              </div>
-              <ul className="divide-y divide-dashed divide-stone-200">
-                {IMPORT_LINES.map((line) => (
-                  <li key={line.narration} className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 py-3.5">
-                    <span className="font-mono text-xs break-all text-stone-900">{line.narration}</span>
-                    <span className="text-right font-heading font-extrabold text-stone-900 tabular-nums">{formatNaira(line.kobo)}</span>
-                    <span className="col-span-2 flex items-center gap-2 text-xs text-stone-500">
-                      <span className={`rounded-full px-2.5 py-0.5 font-nav font-medium ${TAG_STYLES[line.tone]}`}>{line.tag}</span>
-                      {line.note}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-3">
-                <p className="flex justify-between text-sm text-stone-500">
-                  Matched automatically <b className="text-stone-900 tabular-nums">31 of 38</b>
-                </p>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-200">
-                  <div className="h-full w-[82%] rounded-full bg-linear-to-r from-orange-400 to-primary" />
-                </div>
-              </div>
-              <div className="absolute -bottom-7 left-4 flex items-center gap-3 rounded-2xl bg-primary px-5 py-3 text-white shadow-[0_16px_34px_rgb(234_124_0/0.4)] sm:-left-7">
-                <span className="flex size-9 items-center justify-center rounded-full bg-white/20">
-                  <CheckCircle2 className="size-5" />
-                </span>
-                <div>
-                  <p className="font-heading text-lg font-black tabular-nums">+{formatNaira(10_750_000)}</p>
-                  <p className="text-xs text-white/90">INV-0042 is now paid</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* ── Hero: a bank alert and the invoice it paid (D-73) ─────────────────────────────────── */}
+        <BankAlertHero />
 
         {/* ── About ────────────────────────────────────────────────────────────────────────────── */}
         <section id="about" aria-labelledby="about-heading" className="scroll-mt-20 px-4 py-20 sm:px-6">

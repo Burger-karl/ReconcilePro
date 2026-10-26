@@ -695,3 +695,15 @@ If a decision changes, add a new entry that supersedes the old one; don't edit h
   the MBS e-invoicing platform (interswitchgroup.com/news/interswitch-named-firs-access-point-provider-for-mandatory-e-invoicing),
   Interswitch's FIRS e-invoicing docs (docs.interswitchgroup.com/docs/firs-e-invoicing), and KPMG's FIRS
   e-invoicing readiness deck (IRN and QR code).
+
+## D-73 — The hero is a bank alert and the invoice it paid (replaces D-71's photo hero)
+- **Context:** the owner found the photo-carousel hero with a card on the right too generic. Three alternatives were
+  demoed (bank alert, printed receipt, headline with inline photos); the owner chose the bank alert.
+- **Decision:** `components/marketing/bank-alert-hero.tsx`: on CEK's beige, the heading "Your phone says ₦107,500.00
+  came in. We tell you which invoice it paid." On the right, a phone lock screen with two GTBank NIP credit alerts and
+  a Paystack settlement, a dashed orange line from the top alert to a paper invoice (INV-0042, ₦100,000 + 7.5% VAT,
+  reference RCN-7Q4K), and a PAID rubber stamp that lands on it (`.animate-stamp`, off for reduced motion).
+- **Why:** it shows the product's one job with things every Nigerian business owner already knows: the bank's credit
+  alert and an invoice with a payment reference. The phone and invoice are decoration (`aria-hidden`); the heading
+  and text say the same in words. The photo carousel component is deleted; the photos are still used elsewhere.
+- **Not changed:** the logo. Four new marks were demoed and the owner turned them all down; the current one stays.
