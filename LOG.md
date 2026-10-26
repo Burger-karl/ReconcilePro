@@ -348,3 +348,9 @@ Template (copy per day):
 - **Learned:** White text on CEK's orange is under the 4.5:1 contrast rule, so orange is only for bold labels and large text; small orange text uses a darker orange.
 - **Next:** Look at every screen in light and dark, then commit and merge.
 - **Also built:** an eye button on every password box (login, register, reset), using shadcn's `input-group`; and an "E-invoicing: coming soon" section on the landing page (D-72; first an app page, moved at my request) showing the planned Sage 200/300 → Access Point Provider (e.g. Interswitch) → FIRS MBS (NRS) flow. It's only a page: FIRS integration stays under "Later".
+
+### Day 13 — 2026-10-26: a hero that isn't generic
+- **Built:** On `feat/bank-alert-hero` (D-73). I said the photo hero looked like every AI-made site, so Claude demoed three new structures and I picked "bank alert": a phone with GTBank credit alerts, and the invoice the top one paid getting a PAID rubber stamp. The carousel is gone.
+- **Decided:** I turned down four new logo ideas (matched pair, ledger tick, paid stamp, naira tick); the logo stays as it is for now.
+- **Learned:** A hero made of things the customer already sees every day (a bank SMS, a paper invoice) says more than a stock photo, and needs no extra words.
+- **Next:** Look at it on a phone. Find a logo I like.
